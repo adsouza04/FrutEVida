@@ -1,0 +1,16 @@
+export default {
+  primaria: "#2F6B3B",
+  primariaEscura: "#1E4A2A",
+  primariaClara: "#EAF4E8",
+  secundaria: "#F3A83B",
+  destaque: "#FFF4D8",
+  fundo: "#F7F8F4",
+  superficie: "#FFFFFF",
+  borda: "#E7E9E2",
+  texto: "#1D2A20",
+  textoClaro: "#718075",
+  placeholder: "#9AA59D",
+  perigo: "#C94A4A",
+  branco: "#FFFFFF",
+  sombra: "#16291C",
+};
