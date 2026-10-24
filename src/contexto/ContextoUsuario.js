@@ -1,46 +1,41 @@
 import React, { createContext, useContext, useState } from "react";
+import { api } from "../servicos/api";
 
-const ContextoUsuario = createContext();
+const ContextoUsuario = createContext(null);
 
 export function ProvedorUsuario({ children }) {
-    const [usuario, setUsuario] = useState(null);
+  const [usuario, setUsuario] = useState(null);
 
-    function cadastrarUsuario(dadosUsuario) {
-        setUsuario({
-            nome: dadosUsuario.nome.trim(),
-            email: dadosUsuario.email.trim().toLowerCase(),
-            telefone: dadosUsuario.telefone.trim(),
-            endereco: dadosUsuario.endereco.trim(),
-            senha: dadosUsuario.senha,
-        });
-    }
+  async function cadastrarUsuario(dados) {
+    return api.cadastrar({
+      nome: dados.nome.trim(),
+      email: dados.email.trim().toLowerCase(),
+      telefone: dados.telefone.trim(),
+      cep: (dados.cep || "").trim(),
+      endereco: dados.endereco.trim(),
+      senha: dados.senha,
+    });
+  }
 
-    function fazerLogin(email, senha) {
-        if (!usuario) {
-            return false;
-        }
+  async function fazerLogin(email, senha) {
+    const logado = await api.login(email.trim().toLowerCase(), senha);
+    setUsuario(logado);
+    return logado;
+  }
 
-        const emailDigitado = email.trim().toLowerCase();
+  function sair() {
+    setUsuario(null);
+  }
 
-        return (
-            emailDigitado === usuario.email &&
-            senha === usuario.senha
-        );
-    }
-
-    return (
-        <ContextoUsuario.Provider
-            value={{
-                usuario,
-                cadastrarUsuario,
-                fazerLogin,
-            }}
-        >
-            {children}
-        </ContextoUsuario.Provider>
-    );
+  return (
+    <ContextoUsuario.Provider value={{ usuario, cadastrarUsuario, fazerLogin, sair }}>
+      {children}
+    </ContextoUsuario.Provider>
+  );
 }
 
 export function useUsuario() {
-    return useContext(ContextoUsuario);
+  const ctx = useContext(ContextoUsuario);
+  if (!ctx) throw new Error("useUsuario precisa ser usado dentro de um ProvedorUsuario");
+  return ctx;
 }

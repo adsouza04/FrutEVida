@@ -7,60 +7,63 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 
 import cores from "../tema/cores";
 import { useUsuario } from "../contexto/ContextoUsuario";
+import { buscarCep } from "../servicos/api";
+import { cepValido, validarCadastro } from "../utils/validacoes";
 
 export default function TelaCadastro({ navigation }) {
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [telefone, setTelefone] = useState("");
+  const [cep, setCep] = useState("");
+  const [buscandoCep, setBuscandoCep] = useState(false);
+  const [avisoCep, setAvisoCep] = useState("");
   const [endereco, setEndereco] = useState("");
+  const [salvando, setSalvando] = useState(false);
   const [senha, setSenha] = useState("");
   const [confirmarSenha, setConfirmarSenha] = useState("");
 
   const { cadastrarUsuario } = useUsuario();
 
-  function handleCadastrar() {
-    if (
-      !nome.trim() ||
-      !email.trim() ||
-      !telefone.trim() ||
-      !endereco.trim() ||
-      !senha ||
-      !confirmarSenha
-    ) {
-      alert("Preencha todos os campos.");
+  // Consome o serviço REST dos Correios (ViaCEP) quando o CEP fica completo.
+  async function alterarCep(valor) {
+    setCep(valor);
+    setAvisoCep("");
+    if (!cepValido(valor)) return;
+
+    setBuscandoCep(true);
+    try {
+      const encontrado = await buscarCep(valor);
+      setEndereco(encontrado.texto + ", nº ");
+      setAvisoCep("Endereço encontrado. Complete com o número.");
+    } catch (erro) {
+      setAvisoCep(erro.semConexao ? "Sem internet para buscar o CEP." : erro.message);
+    } finally {
+      setBuscandoCep(false);
+    }
+  }
+
+  async function handleCadastrar() {
+    const erro = validarCadastro({ nome, email, telefone, endereco, senha, confirmarSenha });
+    if (erro) {
+      alert(erro);
       return;
     }
 
-    if (!email.includes("@") || !email.includes(".")) {
-      alert("Digite um e-mail válido.");
-      return;
+    setSalvando(true);
+    try {
+      await cadastrarUsuario({ nome, email, telefone, cep, endereco, senha });
+      alert("Conta criada com sucesso! Faça o login para continuar.");
+      navigation.replace("Login");
+    } catch (e) {
+      alert(e.semConexao ? "Sem conexão com o servidor. Tente novamente." : e.message);
+    } finally {
+      setSalvando(false);
     }
-
-    if (senha.length < 6) {
-      alert("A senha deve ter pelo menos 6 caracteres.");
-      return;
-    }
-
-    if (senha !== confirmarSenha) {
-      alert("As senhas não conferem.");
-      return;
-    }
-
-    cadastrarUsuario({
-      nome,
-      email,
-      telefone,
-      endereco,
-      senha,
-    });
-
-    alert("Conta criada com sucesso! Faça o login para continuar.");
-
-    navigation.replace("Login");
   }
 
   return (
@@ -78,12 +81,14 @@ export default function TelaCadastro({ navigation }) {
       <ScrollView contentContainerStyle={estilos.formulario}>
         <Campo
           rotulo="Nome completo"
+          testID="campo-nome"
           value={nome}
           onChangeText={setNome}
         />
 
         <Campo
           rotulo="E-mail"
+          testID="campo-email"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
@@ -92,19 +97,40 @@ export default function TelaCadastro({ navigation }) {
 
         <Campo
           rotulo="Telefone"
+          testID="campo-telefone"
           value={telefone}
           onChangeText={setTelefone}
           keyboardType="phone-pad"
         />
 
         <Campo
+          rotulo="CEP"
+          testID="campo-cep"
+          value={cep}
+          onChangeText={alterarCep}
+          keyboardType="number-pad"
+          maxLength={9}
+          placeholder="00000-000"
+        />
+        {(buscandoCep || avisoCep) ? (
+          <View style={estilos.avisoCep}>
+            {buscandoCep && <ActivityIndicator size="small" color={cores.primaria} />}
+            <Text style={estilos.avisoCepTexto}>
+              {buscandoCep ? " Buscando endereço nos Correios..." : avisoCep}
+            </Text>
+          </View>
+        ) : null}
+
+        <Campo
           rotulo="Endereço de entrega"
+          testID="campo-endereco"
           value={endereco}
           onChangeText={setEndereco}
         />
 
         <Campo
           rotulo="Senha"
+          testID="campo-senha"
           value={senha}
           onChangeText={setSenha}
           secureTextEntry
@@ -112,18 +138,22 @@ export default function TelaCadastro({ navigation }) {
 
         <Campo
           rotulo="Confirmar senha"
+          testID="campo-confirmar-senha"
           value={confirmarSenha}
           onChangeText={setConfirmarSenha}
           secureTextEntry
         />
 
         <TouchableOpacity
-          style={estilos.botaoPrimario}
+          style={[estilos.botaoPrimario, salvando && { opacity: 0.7 }]}
           onPress={handleCadastrar}
+          disabled={salvando}
         >
-          <Text style={estilos.botaoPrimarioTexto}>
-            CADASTRAR
-          </Text>
+          {salvando ? (
+            <ActivityIndicator color={cores.branco} />
+          ) : (
+            <Text style={estilos.botaoPrimarioTexto}>CADASTRAR</Text>
+          )}
         </TouchableOpacity>
 
         <View style={estilos.rodape}>
@@ -230,5 +260,17 @@ const estilos = StyleSheet.create({
     color: cores.primaria,
     fontWeight: "bold",
     fontSize: 13,
+  },
+
+  avisoCep: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: -8,
+    marginBottom: 12,
+  },
+
+  avisoCepTexto: {
+    fontSize: 12,
+    color: cores.textoClaro,
   },
 });

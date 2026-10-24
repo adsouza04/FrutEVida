@@ -17,9 +17,12 @@ import {
 } from "../dados/produtos";
 import { useProdutos } from "../contexto/ContextoProdutos";
 import { useCarrinho } from "../contexto/ContextoCarrinho";
+import { useUsuario } from "../contexto/ContextoUsuario";
 
 export default function TelaPrincipal({ navigation }) {
-  const { produtos } = useProdutos();
+  const { produtos, carregando, sincronizando, sincronizar, status } = useProdutos();
+  const { usuario } = useUsuario();
+  const primeiroNome = usuario?.nome?.split(" ")[0];
 
   const {
     adicionarAoCarrinho,
@@ -46,7 +49,9 @@ export default function TelaPrincipal({ navigation }) {
     <>
       <View style={s.topo}>
         <View>
-          <Text style={s.saudacao}>Olá! 👋</Text>
+          <Text style={s.saudacao}>
+            Olá{primeiroNome ? `, ${primeiroNome}` : ""}! 👋
+          </Text>
 
           <Text style={s.titulo}>
             O que vamos levar hoje?
@@ -60,6 +65,19 @@ export default function TelaPrincipal({ navigation }) {
           <Text>⚙️</Text>
         </TouchableOpacity>
       </View>
+
+      {status.online === false && (
+        <TouchableOpacity style={s.offline} onPress={sincronizar}>
+          <Text style={s.offlineTexto}>
+            Sem conexão · mostrando produtos salvos no celular. Toque para tentar de novo.
+          </Text>
+        </TouchableOpacity>
+      )}
+      {status.pendentes > 0 && (
+        <Text style={s.pendentes}>
+          {status.pendentes} pedido(s) aguardando envio ao servidor
+        </Text>
+      )}
 
       <View style={s.busca}>
         <Text style={s.lupa}>⌕</Text>
@@ -164,6 +182,8 @@ export default function TelaPrincipal({ navigation }) {
         ListHeaderComponent={cabecalho}
         contentContainerStyle={s.conteudo}
         columnWrapperStyle={s.colunas}
+        refreshing={sincronizando}
+        onRefresh={sincronizar}
         renderItem={({ item }) => (
           <View style={s.card}>
             <View style={s.cardImagem}>
@@ -206,6 +226,7 @@ export default function TelaPrincipal({ navigation }) {
               </View>
 
               <TouchableOpacity
+                testID={`adicionar-${item.id}`}
                 style={s.mais}
                 onPress={() =>
                   adicionarAoCarrinho(item)
@@ -220,7 +241,9 @@ export default function TelaPrincipal({ navigation }) {
         )}
         ListEmptyComponent={
           <Text style={s.vazio}>
-            Nenhum produto encontrado.
+            {carregando
+              ? "Carregando produtos..."
+              : "Nenhum produto encontrado."}
           </Text>
         }
         ListFooterComponent={
@@ -315,6 +338,25 @@ const s = StyleSheet.create({
     backgroundColor: cores.primariaClara,
     alignItems: "center",
     justifyContent: "center",
+  },
+
+  offline: {
+    backgroundColor: cores.destaque,
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 12,
+  },
+
+  offlineTexto: {
+    fontSize: 11,
+    color: cores.texto,
+  },
+
+  pendentes: {
+    fontSize: 11,
+    color: cores.secundaria,
+    fontWeight: "700",
+    marginBottom: 10,
   },
 
   busca: {

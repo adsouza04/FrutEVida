@@ -8,6 +8,7 @@ import {
     SafeAreaView,
     KeyboardAvoidingView,
     Platform,
+    ActivityIndicator,
 } from "react-native";
 
 import cores from "../tema/cores";
@@ -17,28 +18,29 @@ export default function TelaLogin({ navigation }) {
     const [email, setEmail] = useState("");
     const [senha, setSenha] = useState("");
     const [ver, setVer] = useState(false);
+    const [entrando, setEntrando] = useState(false);
 
-    const { usuario, fazerLogin } = useUsuario();
+    const { fazerLogin } = useUsuario();
 
-    function entrar() {
+    async function entrar() {
         if (!email.trim() || !senha) {
             alert("Preencha e-mail e senha para continuar.");
             return;
         }
 
-        if (!usuario) {
-            alert("Nenhuma conta cadastrada. Crie uma conta primeiro.");
-            return;
+        setEntrando(true);
+        try {
+            await fazerLogin(email, senha);
+            navigation.replace("Principal");
+        } catch (erro) {
+            alert(
+                erro.semConexao
+                    ? "Não foi possível falar com o servidor. Verifique se a API está rodando e se o celular está na mesma rede Wi-Fi."
+                    : erro.message
+            );
+        } finally {
+            setEntrando(false);
         }
-
-        const loginValido = fazerLogin(email, senha);
-
-        if (!loginValido) {
-            alert("E-mail ou senha incorretos.");
-            return;
-        }
-
-        navigation.replace("Principal");
     }
 
     return (
@@ -78,6 +80,7 @@ export default function TelaLogin({ navigation }) {
 
                         <TextInput
                             style={s.campo}
+                            testID="login-email"
                             placeholder="seuemail@exemplo.com"
                             placeholderTextColor={cores.placeholder}
                             autoCapitalize="none"
@@ -94,6 +97,7 @@ export default function TelaLogin({ navigation }) {
 
                         <TextInput
                             style={s.campo}
+                            testID="login-senha"
                             placeholder="••••••••"
                             placeholderTextColor={cores.placeholder}
                             secureTextEntry={!ver}
@@ -115,11 +119,18 @@ export default function TelaLogin({ navigation }) {
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={s.botao}
+                        style={[s.botao, entrando && { opacity: 0.7 }]}
                         onPress={entrar}
+                        disabled={entrando}
                     >
-                        <Text style={s.botaoTexto}>Entrar</Text>
-                        <Text style={s.seta}>→</Text>
+                        {entrando ? (
+                            <ActivityIndicator color={cores.branco} />
+                        ) : (
+                            <>
+                                <Text style={s.botaoTexto}>Entrar</Text>
+                                <Text style={s.seta}>→</Text>
+                            </>
+                        )}
                     </TouchableOpacity>
 
                     <View style={s.rodape}>
