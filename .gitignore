@@ -3,3 +3,7 @@ backend/node_modules/
 .expo/
 .env
 .env.*
+!.env.example
+backend/dados/*.db*
+__pycache__/
+.maestro/
