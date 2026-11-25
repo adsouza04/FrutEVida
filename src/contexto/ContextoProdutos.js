@@ -30,7 +30,6 @@ export function ProvedorProdutos({ children }) {
     }
   }, []);
 
-  // Abre primeiro com o que está salvo no celular e depois atualiza com o servidor.
   useEffect(() => {
     (async () => {
       try {
@@ -52,7 +51,6 @@ export function ProvedorProdutos({ children }) {
     setProdutos(await registrarAlteracaoLocal(produtoDoServidor));
   }
 
-  // CRUD: grava no servidor primeiro; só atualiza a tela se o servidor confirmar.
   async function adicionarProduto(dados) {
     await aplicar(await api.criarProduto(dados));
   }

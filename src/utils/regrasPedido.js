@@ -1,6 +1,3 @@
-// Regras do pedido usadas pelo APP (para mostrar valores) e pelo SERVIDOR (que recalcula tudo).
-// Mantidas num arquivo só para os dois lados nunca calcularem diferente.
-
 const arredondar = (v) => Math.round(v * 100) / 100;
 
 const FRETE_GRATIS_A_PARTIR_DE = 100;
@@ -16,7 +13,6 @@ const CUPONS = {
   BEMVINDO5: { tipo: "fixo", valor: 5, descricao: "R$ 5,00 de desconto", minimo: 30 },
 };
 
-// Etapas que o cliente acompanha no rastreamento, em ordem.
 const ETAPAS_PEDIDO = [
   { status: "confirmado", titulo: "Pedido confirmado", descricao: "Recebemos seu pedido e o pagamento." },
   { status: "separando", titulo: "Separando os produtos", descricao: "Escolhendo os itens mais frescos." },
@@ -37,7 +33,6 @@ function calcularFrete(subtotal, tipoEntrega = "padrao") {
   return tipo.valor;
 }
 
-// Retorna { valido, cupom, erro }.
 function validarCupom(codigo, subtotal) {
   const chave = String(codigo || "").trim().toUpperCase();
   if (!chave) return { valido: false, erro: "Digite um cupom." };
@@ -49,7 +44,6 @@ function validarCupom(codigo, subtotal) {
   return { valido: true, cupom: { codigo: chave, ...cupom } };
 }
 
-// Resumo completo do pedido: subtotal, frete, desconto e total.
 function calcularResumo({ subtotal, tipoEntrega = "padrao", cupom }) {
   subtotal = arredondar(subtotal);
   let frete = calcularFrete(subtotal, tipoEntrega);
@@ -79,7 +73,6 @@ function somenteDigitos(texto) {
   return String(texto || "").replace(/\D/g, "");
 }
 
-// Validação oficial do CPF (dígitos verificadores).
 function validarCpf(cpf) {
   const n = somenteDigitos(cpf);
   if (n.length !== 11 || /^(\d)\1{10}$/.test(n)) return false;
@@ -92,7 +85,6 @@ function validarCpf(cpf) {
   return true;
 }
 
-// Código amigável do pedido, ex.: FV-000042
 function codigoPedido(id) {
   return "FV-" + String(id).padStart(6, "0");
 }

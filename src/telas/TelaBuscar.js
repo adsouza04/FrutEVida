@@ -27,7 +27,6 @@ const FAIXAS = [
   { id: "acima20", rotulo: "Acima de R$ 20", min: 20, max: Infinity },
 ];
 
-// Remove acentos para "maca" encontrar "Maçã".
 const normalizar = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 const percentualDesconto = (p) => (p.preco_antigo ? 1 - p.preco / p.preco_antigo : 0);
 

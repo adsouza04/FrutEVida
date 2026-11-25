@@ -3,7 +3,6 @@ import { View, Text, StyleSheet } from "react-native";
 import cores from "../tema/cores";
 import { formatarPreco } from "../utils/validacoes";
 
-// Subtotal, frete, desconto e total. freteTexto substitui o valor do frete quando ainda não foi definido.
 export default function ResumoValores({ resumo, quantidade, freteTexto }) {
   return (
     <View>

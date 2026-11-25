@@ -26,7 +26,6 @@ export default function TelaCarrinho({ navigation }) {
 
   const valores = resumo("padrao");
   const faltaFreteGratis = FRETE_GRATIS_A_PARTIR_DE - total;
-  // Cupom aplicado que deixou de valer (ex.: o subtotal caiu abaixo do mínimo).
   const cupomInvalido = cupom && valores.cupom !== cupom;
 
   function confirmarLimpar() {

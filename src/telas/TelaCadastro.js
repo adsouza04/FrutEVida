@@ -15,13 +15,12 @@ export default function TelaCadastro({ navigation }) {
   const [dados, setDados] = useState({
     nome: "", cpf: "", email: "", telefone: "", senha: "", confirmarSenha: "", aceitouTermos: false,
   });
-  const [tocados, setTocados] = useState({}); // campos que o usuário já preencheu
+  const [tocados, setTocados] = useState({});
   const [enviou, setEnviou] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const { cadastrarUsuario } = useUsuario();
 
   const erros = errosCadastro(dados);
-  // Mostra o erro do campo depois que a pessoa sai dele, ou ao tentar cadastrar.
   const erroDe = (campo) => ((enviou || tocados[campo]) ? erros[campo] : null);
 
   const mudar = (campo, mascara) => (valor) => setDados((d) => ({ ...d, [campo]: mascara ? mascara(valor) : valor }));

@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import cores from "../tema/cores";
 import Icone from "./Icone";
 
-// Cabeçalho padrão das telas internas: voltar, título e uma ação opcional à direita.
 export default function Cabecalho({ titulo, subtitulo, onVoltar, direita }) {
   return (
     <View style={s.cabecalho}>

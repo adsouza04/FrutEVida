@@ -1,4 +1,3 @@
-// Textos e situações dos pedidos usados nas telas de pedidos e rastreamento.
 const { ETAPAS_PEDIDO } = require("./regrasPedido");
 
 const SITUACOES = {
@@ -18,7 +17,6 @@ function emAndamento(status) {
   return !["entregue", "cancelado"].includes(status);
 }
 
-// Quantas etapas já foram concluídas (0 a 4), para a barra de progresso.
 function progresso(status) {
   const i = ETAPAS_PEDIDO.findIndex((e) => e.status === status);
   return i < 0 ? 0 : i + 1;
@@ -37,7 +35,6 @@ function formatarDataHora(iso) {
   return `${dois(d.getDate())}/${dois(d.getMonth() + 1)} às ${dois(d.getHours())}:${dois(d.getMinutes())}`;
 }
 
-// "Entrega 25/11/2026, das 10:00 às 12:00"
 function textoEntrega(pedido) {
   const a = pedido?.agendamento;
   if (!a) return "";

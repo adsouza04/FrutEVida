@@ -1,4 +1,3 @@
-// Consumo dos serviços RESTful: API Frut & Vida e ViaCEP (Correios).
 import { API_URL } from "./config";
 
 export class ErroApi extends Error {
@@ -59,14 +58,11 @@ export const api = {
   obterPedido: (pedidoId) => requisicao("GET", `/pedidos/${pedidoId}`),
   avancarPedido: (pedidoId) => requisicao("POST", `/pedidos/${pedidoId}/avancar`),
 
-  // Verifica o pagamento de um pedido no Mercado Pago e atualiza o status do pedido.
   verificarPagamento: (pedidoId) => requisicao("POST", `/pedidos/${pedidoId}/verificar-pagamento`, null, { tempoLimite: 15000 }),
 
-  // Item 2.2: gera o JSON para o dashboard
   exportarJson: () => requisicao("POST", "/exportar", null, { tempoLimite: 15000 }),
 };
 
-// Serviço externo dos Correios (via ViaCEP): preenche o endereço a partir do CEP.
 export async function buscarCep(cep) {
   const numeros = String(cep).replace(/\D/g, "");
   const dados = await requisicao("GET", `/ws/${numeros}/json/`, null, { base: "https://viacep.com.br" });

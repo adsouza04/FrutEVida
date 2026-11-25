@@ -15,7 +15,6 @@ export const ABAS = [
 
 const ALTURA = 62;
 
-// Espaço que as telas com abas reservam embaixo para o conteúdo não ficar atrás da barra.
 export function useAlturaAbas() {
   const insets = useSafeAreaInsets();
   return ALTURA + Math.max(insets.bottom, 8);

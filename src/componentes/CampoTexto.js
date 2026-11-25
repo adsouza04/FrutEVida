@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
 import cores from "../tema/cores";
 
-// Campo com rótulo, mensagem de erro e, para senhas, o botão Mostrar/Ocultar.
 export default function CampoTexto({ rotulo, erro, ajuda, senha, direita, estilo, editable = true, onFocus, onBlur, style, ...props }) {
   const [focado, setFocado] = useState(false);
   const [visivel, setVisivel] = useState(false);

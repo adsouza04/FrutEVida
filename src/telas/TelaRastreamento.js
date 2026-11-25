@@ -43,7 +43,6 @@ export default function TelaRastreamento({ navigation, route }) {
     carregar();
   }, [carregar]);
 
-  // Enquanto o pedido está em andamento, a tela se atualiza sozinha.
   useEffect(() => {
     if (!pedido || !emAndamento(pedido.status)) return undefined;
     const timer = setInterval(carregar, ATUALIZAR_A_CADA_MS);

@@ -3,7 +3,6 @@ import { View, Text, StyleSheet } from "react-native";
 import cores from "../tema/cores";
 import Icone from "./Icone";
 
-// Indicador das etapas do checkout: concluídas, atual e próximas.
 export default function Etapas({ etapas, atual }) {
   return (
     <View style={s.linha}>

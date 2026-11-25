@@ -3,7 +3,6 @@ import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, View } from "rea
 import cores from "../tema/cores";
 import Icone from "./Icone";
 
-// variante: "primario" (verde cheio), "secundario" (contorno), "escuro", "perigo"
 export default function Botao({ titulo, onPress, variante = "primario", carregando, desabilitado, icone, estilo }) {
   const v = VARIANTES[variante];
   const inativo = desabilitado || carregando;

@@ -2,7 +2,6 @@ import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import cores from "../tema/cores";
 
-// Título grande das telas principais (abas), alinhado à esquerda.
 export default function TituloAba({ titulo, subtitulo, direita }) {
   return (
     <View style={s.linha}>

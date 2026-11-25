@@ -30,7 +30,6 @@ export default function TelaProduto({ navigation, route }) {
     [produtos, produto]
   );
 
-  // Mensagem "adicionado ao carrinho" que aparece e some sozinha.
   useEffect(() => {
     if (!aviso) return;
     Animated.timing(opacidade, { toValue: 1, duration: 180, useNativeDriver: true }).start();

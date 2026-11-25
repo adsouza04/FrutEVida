@@ -1,4 +1,3 @@
-// Validações e formatações usadas nas telas — testadas em backend/tests/unit/carrinho-app.test.js.
 const { validarCpf, somenteDigitos } = require("./regrasPedido");
 
 const SENHA_MINIMA = 8;
@@ -19,7 +18,6 @@ function cepValido(cep) {
   return limparCep(cep).length === 8;
 }
 
-// Erros de cada campo do cadastro: { campo: mensagem }. Objeto vazio = tudo certo.
 function errosCadastro({ nome, cpf, email, telefone, senha, confirmarSenha, aceitouTermos }) {
   const erros = {};
   if (!nome || nome.trim().split(/\s+/).length < 2) erros.nome = "Digite seu nome e sobrenome.";
@@ -33,7 +31,6 @@ function errosCadastro({ nome, cpf, email, telefone, senha, confirmarSenha, acei
   return erros;
 }
 
-// Primeira mensagem de erro do cadastro, ou null se estiver tudo certo.
 function validarCadastro(dados) {
   const erros = Object.values(errosCadastro(dados));
   return erros.length ? erros[0] : null;

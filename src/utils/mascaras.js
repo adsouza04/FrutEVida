@@ -1,4 +1,3 @@
-// Máscaras de digitação: aceitam só números e no máximo a quantidade certa de dígitos.
 const digitos = (t, max) => String(t || "").replace(/\D/g, "").slice(0, max);
 
 function mascararCpf(texto) {
@@ -22,7 +21,6 @@ function mascararCep(texto) {
   return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
 }
 
-// Mostra só o começo e o fim do CPF no perfil: 518.***.***-80
 function ocultarCpf(cpf) {
   const d = digitos(cpf, 11);
   if (d.length !== 11) return "";

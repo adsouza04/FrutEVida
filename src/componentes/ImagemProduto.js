@@ -5,7 +5,6 @@ import { API_URL } from "../servicos/config";
 import { CATEGORIA_ICONE } from "../dados/produtos";
 import { resolverImagem } from "../utils/imagens";
 
-// Mostra a foto do produto; se não houver foto (ou ela falhar), mostra o emoji.
 export default function ImagemProduto({ produto, estilo, tamanhoEmoji = 40 }) {
   const uri = resolverImagem(produto?.imagem, API_URL);
   const [falhou, setFalhou] = useState(false);

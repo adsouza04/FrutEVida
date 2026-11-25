@@ -25,7 +25,6 @@ export async function sincronizarProdutos() {
   return { produtos: await lerProdutosCache(), sincronizadoEm: resposta.sincronizado_em, alterados: resposta.produtos.length };
 }
 
-// Atualiza o cache local na hora após um CRUD bem-sucedido no admin.
 export async function registrarAlteracaoLocal(produto) {
   await aplicarProdutosNoCache([normalizarProduto(produto)]);
   return lerProdutosCache();
@@ -36,7 +35,7 @@ export async function enviarPedido(corpo) {
   try {
     return { pendente: false, pedido: await api.criarPedido(pedido) };
   } catch (erro) {
-    if (!erro.semConexao) throw erro; // erro de regra (estoque, etc.): mostra para o usuário
+    if (!erro.semConexao) throw erro;
     await enfileirarPedido({ ...pedido, origem_offline: true });
     return { pendente: true, pedido };
   }
@@ -52,8 +51,8 @@ export async function enviarPedidosPendentes() {
       await removerPedidoPendente(corpo.id_local);
       enviados++;
     } catch (erro) {
-      if (erro.semConexao) break; // continua sem internet: tenta de novo depois
-      recusados.push(erro.message); // o servidor recusou (ex.: acabou o estoque)
+      if (erro.semConexao) break; 
+      recusados.push(erro.message); 
       await removerPedidoPendente(corpo.id_local);
     }
   }

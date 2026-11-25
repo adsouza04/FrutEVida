@@ -154,7 +154,6 @@ function PainelProdutos() {
     Alert.alert("Sincronização", msg);
   }
 
-  // Item 2.2: gera os dados em JSON para o dashboard (Análise de Dados e Estatística).
   async function handleGerarJson() {
     setExportando(true);
     try {
@@ -310,7 +309,6 @@ function PainelProdutos() {
   );
 }
 
-// ---------------------------------------------------------------- Pedidos (etapas da entrega)
 function PainelPedidos() {
   const [pedidos, setPedidos] = useState([]);
   const [carregando, setCarregando] = useState(true);

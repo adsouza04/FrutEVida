@@ -7,18 +7,16 @@ import { calcularResumo, validarCupom } from "../utils/regrasPedido";
 const ContextoCarrinho = createContext(null);
 
 export function ProvedorCarrinho({ children }) {
-  const [itens, setItens] = useState([]); // [{ produto, quantidade }]
-  const [cupom, setCupom] = useState(null); // código do cupom aplicado
+  const [itens, setItens] = useState([]); 
+  const [cupom, setCupom] = useState(null); 
 
-  const total = useMemo(() => calcularTotal(itens), [itens]); // soma dos produtos
+  const total = useMemo(() => calcularTotal(itens), [itens]);
   const quantidadeTotal = useMemo(() => contarItens(itens), [itens]);
 
-  // Resumo com frete e desconto para um tipo de entrega (o servidor recalcula ao finalizar).
   function resumo(tipoEntrega = "padrao") {
     return calcularResumo({ subtotal: total, tipoEntrega, cupom });
   }
 
-  // Retorna null se aplicou, ou a mensagem de erro.
   function aplicarCupom(codigo) {
     const r = validarCupom(codigo, total);
     if (!r.valido) return r.erro;

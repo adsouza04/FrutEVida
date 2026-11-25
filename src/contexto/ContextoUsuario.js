@@ -6,7 +6,7 @@ const ContextoUsuario = createContext(null);
 
 export function ProvedorUsuario({ children }) {
   const [usuario, setUsuario] = useState(null);
-  const [favoritos, setFavoritos] = useState([]); // ids dos produtos (texto)
+  const [favoritos, setFavoritos] = useState([]); 
 
   async function cadastrarUsuario(dados) {
     return api.cadastrar({
@@ -42,7 +42,6 @@ export function ProvedorUsuario({ children }) {
 
   const ehFavorito = useCallback((produtoId) => favoritos.includes(String(produtoId)), [favoritos]);
 
-  // Atualiza na tela na hora e desfaz se o servidor recusar.
   async function alternarFavorito(produtoId) {
     const id = String(produtoId);
     const jaEra = favoritos.includes(id);

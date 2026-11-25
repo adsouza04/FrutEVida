@@ -14,3 +14,4 @@ export default {
   branco: "#FFFFFF",
   sombra: "#16291C",
 };
+  

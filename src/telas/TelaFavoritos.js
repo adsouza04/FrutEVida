@@ -13,7 +13,6 @@ export default function TelaFavoritos({ navigation }) {
   const { favoritos } = useUsuario();
   const { produtos } = useProdutos();
 
-  // Mantém a ordem em que foram favoritados (mais recentes primeiro).
   const lista = useMemo(
     () => favoritos.map((id) => produtos.find((p) => String(p.id) === id)).filter(Boolean),
     [favoritos, produtos]

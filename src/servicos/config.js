@@ -7,8 +7,7 @@ const URL_MANUAL = null;
 
 const PORTA_API = 3000;
 
-// No Expo Go, o celular já conversa com o computador pelo IP da rede (hostUri).
-// Reaproveitamos esse IP para chegar na API, que roda no mesmo computador.
+
 function descobrirUrl() {
   const host = Constants.expoConfig?.hostUri?.split(":")[0];
   if (host && !host.includes("exp.direct") && !host.includes("ngrok")) {

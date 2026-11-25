@@ -1,5 +1,3 @@
-
-
 const arredondar = (valor) => Math.round(valor * 100) / 100;
 
 function adicionarItem(itens, produto, quantidade = 1) {
@@ -28,7 +26,6 @@ function contarItens(itens) {
   return itens.reduce((soma, i) => soma + i.quantidade, 0);
 }
 
-// Formato que a API espera em POST /pedidos
 function montarItensPedido(itens) {
   return itens.map((i) => ({ produto_id: Number(i.produto.id), quantidade: i.quantidade }));
 }

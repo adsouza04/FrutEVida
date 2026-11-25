@@ -34,7 +34,6 @@ const FORMAS_PAGAMENTO = [
   { nome: "Cartão de débito", descricao: "Na entrega, na maquininha.", icone: "wallet-outline" },
 ];
 
-// Data local no formato AAAA-MM-DD (hoje + n dias).
 function dataLocal(diasAFrente) {
   const d = new Date();
   d.setDate(d.getDate() + diasAFrente);
@@ -80,7 +79,7 @@ export default function TelaCheckout({ navigation }) {
     if (Object.keys(errosEndereco(endereco)).length) return;
     setSalvandoEndereco(true);
     try {
-      await salvarEndereco(endereco); // fica salvo para as próximas compras
+      await salvarEndereco(endereco);
     } catch (erro) {
       if (!erro.semConexao) {
         Alert.alert("Endereço", erro.message);
@@ -112,7 +111,7 @@ export default function TelaCheckout({ navigation }) {
   }
 
   function concluir(pedido) {
-    sincronizar(); // atualiza o estoque no catálogo
+    sincronizar(); 
     limparCarrinho();
     navigation.reset([{ nome: "Inicio" }, { nome: "PedidoConfirmado", params: { pedido } }]);
   }
@@ -122,7 +121,6 @@ export default function TelaCheckout({ navigation }) {
     else await pagarNaEntrega();
   }
 
-  // Pagamento na entrega: funciona até sem internet (o pedido entra na fila do celular).
   async function pagarNaEntrega() {
     setEnviando(true);
     try {
@@ -145,7 +143,6 @@ export default function TelaCheckout({ navigation }) {
     }
   }
 
-  // Pagamento online: o servidor cria o pedido e o link do Mercado Pago.
   async function pagarComMercadoPago() {
     setEnviando(true);
     try {
@@ -163,7 +160,6 @@ export default function TelaCheckout({ navigation }) {
   }
 
   async function abrirCheckout(pedido) {
-    // Abre a página oficial do Mercado Pago. No iPhone, a função espera o cliente fechar a página.
     await WebBrowser.openBrowserAsync(pedido.pagamento.link_pagamento);
     await verificarPagamento(pedido.id, { silencioso: true });
   }

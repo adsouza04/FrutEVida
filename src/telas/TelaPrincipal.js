@@ -11,7 +11,6 @@ import Icone from "../componentes/Icone";
 import { useAlturaAbas } from "../componentes/BarraAbas";
 import { FRETE_GRATIS_A_PARTIR_DE } from "../utils/regrasPedido";
 
-// Tela Início: atalhos de categoria, ofertas e destaques. A busca completa fica na aba Buscar.
 export default function TelaPrincipal({ navigation }) {
   const { produtos, carregando, sincronizando, sincronizar, status } = useProdutos();
   const { usuario } = useUsuario();

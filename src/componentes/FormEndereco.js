@@ -8,7 +8,6 @@ import { cepValido } from "../utils/validacoes";
 
 export const ENDERECO_VAZIO = { cep: "", rua: "", numero: "", complemento: "", bairro: "", cidade: "", uf: "", referencia: "" };
 
-// Erros de cada campo do endereço: { campo: mensagem }.
 export function errosEndereco(e) {
   const erros = {};
   if (!cepValido(e.cep)) erros.cep = "Digite um CEP com 8 números.";
@@ -19,7 +18,6 @@ export function errosEndereco(e) {
   return erros;
 }
 
-// Formulário de endereço: ao completar o CEP, busca rua, bairro e cidade nos Correios (ViaCEP).
 export default function FormEndereco({ endereco, onChange, erros = {} }) {
   const [buscando, setBuscando] = useState(false);
   const [avisoCep, setAvisoCep] = useState("");

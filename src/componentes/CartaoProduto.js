@@ -9,7 +9,6 @@ import { formatarPreco } from "../utils/validacoes";
 
 export const ESTOQUE_BAIXO = 5;
 
-// Card do produto usado no Início, na Busca e nos Favoritos.
 export default function CartaoProduto({ produto, onPress, largura }) {
   const { adicionarAoCarrinho, quantidadeDe } = useCarrinho();
   const { ehFavorito, alternarFavorito } = useUsuario();
