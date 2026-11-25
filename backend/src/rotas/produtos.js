@@ -29,13 +29,13 @@ module.exports = function rotasProdutos(db) {
     if (!valido) return res.status(400).json({ erro: erros.join(" "), erros });
 
     const dados = {
-      unidade: null, emoji: null, descricao: null, imagem: null, destaque: 0, estoque: 0,
+      unidade: null, emoji: null, descricao: null, imagem: null, preco_antigo: null, destaque: 0, estoque: 0,
       ...produto,
       atualizado_em: new Date().toISOString(),
     };
     const { lastInsertRowid } = db.prepare(`
-      INSERT INTO produtos (nome, descricao, categoria, unidade, emoji, imagem, destaque, preco, estoque, atualizado_em)
-      VALUES (@nome, @descricao, @categoria, @unidade, @emoji, @imagem, @destaque, @preco, @estoque, @atualizado_em)
+      INSERT INTO produtos (nome, descricao, categoria, unidade, emoji, imagem, destaque, preco, preco_antigo, estoque, atualizado_em)
+      VALUES (@nome, @descricao, @categoria, @unidade, @emoji, @imagem, @destaque, @preco, @preco_antigo, @estoque, @atualizado_em)
     `).run(dados);
     res.status(201).json(formatar(db.prepare("SELECT * FROM produtos WHERE id = ?").get(lastInsertRowid)));
   });
@@ -48,9 +48,11 @@ module.exports = function rotasProdutos(db) {
     if (!valido) return res.status(400).json({ erro: erros.join(" "), erros });
 
     const novo = { ...atual, ...produto, atualizado_em: new Date().toISOString() };
+    // Se o novo preço passou do preço antigo, a oferta deixa de existir.
+    if (novo.preco_antigo !== null && novo.preco_antigo <= novo.preco) novo.preco_antigo = null;
     db.prepare(`
       UPDATE produtos SET nome=@nome, descricao=@descricao, categoria=@categoria, unidade=@unidade,
-        emoji=@emoji, imagem=@imagem, destaque=@destaque, preco=@preco, estoque=@estoque, atualizado_em=@atualizado_em
+        emoji=@emoji, imagem=@imagem, destaque=@destaque, preco=@preco, preco_antigo=@preco_antigo, estoque=@estoque, atualizado_em=@atualizado_em
       WHERE id=@id
     `).run(novo);
     res.json(formatar(db.prepare("SELECT * FROM produtos WHERE id = ?").get(atual.id)));

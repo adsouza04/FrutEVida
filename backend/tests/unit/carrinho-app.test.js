@@ -33,10 +33,16 @@ describe("validações do app", () => {
     expect(v.cepValido("123")).toBe(false);
   });
   test("valida formulário de cadastro", () => {
-    const ok = { nome: "Ana", email: "ana@x.com", telefone: "11999999999", endereco: "Rua A, 1", senha: "123456", confirmarSenha: "123456" };
+    const ok = {
+      nome: "Ana Souza", cpf: "529.982.247-25", email: "ana@x.com", telefone: "(11) 95819-2716",
+      senha: "12345678", confirmarSenha: "12345678", aceitouTermos: true,
+    };
     expect(v.validarCadastro(ok)).toBeNull();
-    expect(v.validarCadastro({ ...ok, confirmarSenha: "000000" })).toBe("As senhas não conferem.");
+    expect(v.validarCadastro({ ...ok, confirmarSenha: "00000000" })).toBe("As senhas não conferem.");
     expect(v.validarCadastro({ ...ok, email: "ana" })).toBe("Digite um e-mail válido.");
+    expect(v.errosCadastro({ ...ok, senha: "1234567", confirmarSenha: "1234567" })).toEqual({ senha: "A senha deve ter pelo menos 8 caracteres." });
+    expect(Object.keys(v.errosCadastro({ ...ok, cpf: "111.111.111-11", telefone: "1199", aceitouTermos: false })))
+      .toEqual(["cpf", "telefone", "aceitouTermos"]);
   });
 });
 describe("imagens dos produtos (src/utils/imagens.js)", () => {
@@ -48,5 +54,27 @@ describe("imagens dos produtos (src/utils/imagens.js)", () => {
     expect(resolverImagem("https://exemplo.com/a.jpg", "http://x")).toBe("https://exemplo.com/a.jpg");
     expect(resolverImagem("", "http://x")).toBeNull();
     expect(resolverImagem(null, "http://x")).toBeNull();
+  });
+});
+
+describe("máscaras de CPF, telefone e CEP (src/utils/mascaras.js)", () => {
+  const m = require("../../../src/utils/mascaras");
+  test("aceitam só números e cortam o excesso", () => {
+    expect(m.mascararCpf("529abc98224725999")).toBe("529.982.247-25");
+    expect(m.mascararTelefone("11958192716000")).toBe("(11) 95819-2716");
+    expect(m.mascararTelefone("1133334444")).toBe("(11) 3333-4444");
+    expect(m.mascararCep("048633609")).toBe("04863-360");
+  });
+  test("formata enquanto digita", () => {
+    expect(m.mascararCpf("5299")).toBe("529.9");
+    expect(m.mascararTelefone("119")).toBe("(11) 9");
+    expect(m.ocultarCpf("52998224725")).toBe("529.***.***-25");
+  });
+});
+
+describe("carrinho com quantidade", () => {
+  test("adiciona várias unidades de uma vez", () => {
+    const itens = c.adicionarItem(c.adicionarItem([], maca, 3), maca, 2);
+    expect(itens).toEqual([{ produto: maca, quantidade: 5 }]);
   });
 });

@@ -12,6 +12,7 @@ import {
 
 import { SafeAreaView } from "react-native-safe-area-context";
 import cores from "../tema/cores";
+import Icone from "../componentes/Icone";
 import { useUsuario } from "../contexto/ContextoUsuario";
 
 export default function TelaLogin({ navigation }) {
@@ -31,7 +32,7 @@ export default function TelaLogin({ navigation }) {
         setEntrando(true);
         try {
             await fazerLogin(email, senha);
-            navigation.replace("Principal");
+            navigation.reset([{ nome: "Inicio" }]);
         } catch (erro) {
             alert(
                 erro.semConexao
@@ -54,7 +55,7 @@ export default function TelaLogin({ navigation }) {
                     <View style={s.decor2} />
 
                     <View style={s.logo}>
-                        <Text style={{ fontSize: 38 }}>🌿</Text>
+                        <Icone nome="leaf" tamanho={38} cor={cores.primaria} />
                     </View>
 
                     <Text style={s.marca}>Frut & Vida</Text>
@@ -76,7 +77,7 @@ export default function TelaLogin({ navigation }) {
                     <Text style={s.label}>E-mail</Text>
 
                     <View style={s.campoBox}>
-                        <Text style={s.icone}>✉</Text>
+                        <Icone nome="mail-outline" tamanho={18} cor={cores.primaria} estilo={{ marginRight: 8 }} />
 
                         <TextInput
                             style={s.campo}
@@ -93,7 +94,7 @@ export default function TelaLogin({ navigation }) {
                     <Text style={s.label}>Senha</Text>
 
                     <View style={s.campoBox}>
-                        <Text style={s.icone}>⌑</Text>
+                        <Icone nome="lock-closed-outline" tamanho={18} cor={cores.primaria} estilo={{ marginRight: 8 }} />
 
                         <TextInput
                             style={s.campo}
@@ -150,11 +151,11 @@ export default function TelaLogin({ navigation }) {
 
                     <View style={s.beneficios}>
                         <Text style={s.beneficio}>
-                            ✓ Compra segura
+                            Compra segura com Mercado Pago
                         </Text>
 
                         <Text style={s.beneficio}>
-                            ✓ Produtos frescos
+                            Entrega no seu horário
                         </Text>
                     </View>
                 </View>
@@ -333,7 +334,7 @@ const s = StyleSheet.create({
     },
 
     beneficio: {
-        fontSize: 9,
+        fontSize: 11,
         color: cores.textoClaro,
     },
 });

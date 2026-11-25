@@ -1,273 +1,161 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
-} from "react-native";
-
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
 import cores from "../tema/cores";
 import Cabecalho from "../componentes/Cabecalho";
+import CampoTexto from "../componentes/CampoTexto";
+import Botao from "../componentes/Botao";
+import Icone from "../componentes/Icone";
 import { useUsuario } from "../contexto/ContextoUsuario";
-import { buscarCep } from "../servicos/api";
-import { cepValido, validarCadastro } from "../utils/validacoes";
+import { errosCadastro, SENHA_MINIMA } from "../utils/validacoes";
+import { mascararCpf, mascararTelefone } from "../utils/mascaras";
 
 export default function TelaCadastro({ navigation }) {
-  const [nome, setNome] = useState("");
-  const [email, setEmail] = useState("");
-  const [telefone, setTelefone] = useState("");
-  const [cep, setCep] = useState("");
-  const [buscandoCep, setBuscandoCep] = useState(false);
-  const [avisoCep, setAvisoCep] = useState("");
-  const [endereco, setEndereco] = useState("");
+  const [dados, setDados] = useState({
+    nome: "", cpf: "", email: "", telefone: "", senha: "", confirmarSenha: "", aceitouTermos: false,
+  });
+  const [tocados, setTocados] = useState({}); // campos que o usuário já preencheu
+  const [enviou, setEnviou] = useState(false);
   const [salvando, setSalvando] = useState(false);
-  const [senha, setSenha] = useState("");
-  const [confirmarSenha, setConfirmarSenha] = useState("");
-
   const { cadastrarUsuario } = useUsuario();
 
-  // Consome o serviço REST dos Correios (ViaCEP) quando o CEP fica completo.
-  async function alterarCep(valor) {
-    setCep(valor);
-    setAvisoCep("");
-    if (!cepValido(valor)) return;
+  const erros = errosCadastro(dados);
+  // Mostra o erro do campo depois que a pessoa sai dele, ou ao tentar cadastrar.
+  const erroDe = (campo) => ((enviou || tocados[campo]) ? erros[campo] : null);
 
-    setBuscandoCep(true);
-    try {
-      const encontrado = await buscarCep(valor);
-      setEndereco(encontrado.texto + ", nº ");
-      setAvisoCep("Endereço encontrado. Complete com o número.");
-    } catch (erro) {
-      setAvisoCep(erro.semConexao ? "Sem internet para buscar o CEP." : erro.message);
-    } finally {
-      setBuscandoCep(false);
-    }
-  }
+  const mudar = (campo, mascara) => (valor) => setDados((d) => ({ ...d, [campo]: mascara ? mascara(valor) : valor }));
+  const sair = (campo) => () => setTocados((t) => ({ ...t, [campo]: true }));
 
   async function handleCadastrar() {
-    const erro = validarCadastro({ nome, email, telefone, endereco, senha, confirmarSenha });
-    if (erro) {
-      alert(erro);
-      return;
-    }
+    setEnviou(true);
+    if (Object.keys(erros).length) return;
 
     setSalvando(true);
     try {
-      await cadastrarUsuario({ nome, email, telefone, cep, endereco, senha });
-      alert("Conta criada com sucesso! Faça o login para continuar.");
-      navigation.replace("Login");
+      await cadastrarUsuario(dados);
+      Alert.alert("Conta criada!", "Agora é só entrar com seu e-mail e senha.", [
+        { text: "Entrar", onPress: () => navigation.replace("Login") },
+      ]);
     } catch (e) {
-      alert(e.semConexao ? "Sem conexão com o servidor. Tente novamente." : e.message);
+      Alert.alert("Não foi possível criar a conta", e.semConexao ? "Sem conexão com o servidor. Tente novamente." : e.message);
     } finally {
       setSalvando(false);
     }
   }
 
   return (
-    <SafeAreaView style={estilos.container}>
-      <Cabecalho
-        titulo="Criar conta"
-        subtitulo="Seus dados para entrega"
-        onVoltar={() => navigation.goBack()}
-      />
+    <SafeAreaView style={s.container}>
+      <Cabecalho titulo="Criar conta" onVoltar={() => navigation.goBack()} />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ScrollView contentContainerStyle={s.conteudo} keyboardShouldPersistTaps="handled">
+          <Text style={s.intro}>Preencha seus dados. O endereço de entrega você informa na hora de finalizar a compra.</Text>
 
-      <ScrollView contentContainerStyle={estilos.formulario}>
-        <Campo
-          rotulo="Nome completo"
-          testID="campo-nome"
-          value={nome}
-          onChangeText={setNome}
-        />
+          <View style={s.cartao}>
+            <CampoTexto
+              rotulo="Nome completo"
+              value={dados.nome}
+              onChangeText={mudar("nome")}
+              onBlur={sair("nome")}
+              placeholder="Como está no seu documento"
+              autoCapitalize="words"
+              erro={erroDe("nome")}
+            />
+            <CampoTexto
+              rotulo="CPF"
+              value={dados.cpf}
+              onChangeText={mudar("cpf", mascararCpf)}
+              onBlur={sair("cpf")}
+              placeholder="000.000.000-00"
+              keyboardType="number-pad"
+              maxLength={14}
+              erro={erroDe("cpf")}
+            />
+            <CampoTexto
+              rotulo="E-mail"
+              value={dados.email}
+              onChangeText={mudar("email")}
+              onBlur={sair("email")}
+              placeholder="seuemail@exemplo.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              erro={erroDe("email")}
+            />
+            <CampoTexto
+              rotulo="Telefone"
+              value={dados.telefone}
+              onChangeText={mudar("telefone", mascararTelefone)}
+              onBlur={sair("telefone")}
+              placeholder="(11) 90000-0000"
+              keyboardType="phone-pad"
+              maxLength={15}
+              erro={erroDe("telefone")}
+            />
+            <CampoTexto
+              rotulo="Senha"
+              value={dados.senha}
+              onChangeText={mudar("senha")}
+              onBlur={sair("senha")}
+              senha
+              placeholder={`Mínimo de ${SENHA_MINIMA} caracteres`}
+              autoCapitalize="none"
+              erro={erroDe("senha")}
+              ajuda={dados.senha && !erros.senha ? "Senha com tamanho adequado." : null}
+            />
+            <CampoTexto
+              rotulo="Confirmar senha"
+              value={dados.confirmarSenha}
+              onChangeText={mudar("confirmarSenha")}
+              onBlur={sair("confirmarSenha")}
+              senha
+              placeholder="Repita a senha"
+              autoCapitalize="none"
+              erro={erroDe("confirmarSenha")}
+            />
 
-        <Campo
-          rotulo="E-mail"
-          testID="campo-email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
+            <TouchableOpacity
+              style={s.termos}
+              onPress={() => setDados((d) => ({ ...d, aceitouTermos: !d.aceitouTermos }))}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: dados.aceitouTermos }}
+            >
+              <View style={[s.check, dados.aceitouTermos && s.checkAtivo]}>
+                {dados.aceitouTermos && <Icone nome="checkmark" tamanho={16} cor={cores.branco} />}
+              </View>
+              <Text style={s.termosTexto}>Aceito os termos de uso e a política de privacidade</Text>
+            </TouchableOpacity>
+            {enviou && erros.aceitouTermos ? <Text style={s.erro}>{erros.aceitouTermos}</Text> : null}
 
-        <Campo
-          rotulo="Telefone"
-          testID="campo-telefone"
-          value={telefone}
-          onChangeText={setTelefone}
-          keyboardType="phone-pad"
-        />
-
-        <Campo
-          rotulo="CEP"
-          testID="campo-cep"
-          value={cep}
-          onChangeText={alterarCep}
-          keyboardType="number-pad"
-          maxLength={9}
-          placeholder="00000-000"
-        />
-        {(buscandoCep || avisoCep) ? (
-          <View style={estilos.avisoCep}>
-            {buscandoCep && <ActivityIndicator size="small" color={cores.primaria} />}
-            <Text style={estilos.avisoCepTexto}>
-              {buscandoCep ? " Buscando endereço nos Correios..." : avisoCep}
-            </Text>
+            <Botao titulo="Criar conta" onPress={handleCadastrar} carregando={salvando} estilo={{ marginTop: 18 }} />
           </View>
-        ) : null}
 
-        <Campo
-          rotulo="Endereço de entrega"
-          testID="campo-endereco"
-          value={endereco}
-          onChangeText={setEndereco}
-        />
-
-        <Campo
-          rotulo="Senha"
-          testID="campo-senha"
-          value={senha}
-          onChangeText={setSenha}
-          secureTextEntry
-        />
-
-        <Campo
-          rotulo="Confirmar senha"
-          testID="campo-confirmar-senha"
-          value={confirmarSenha}
-          onChangeText={setConfirmarSenha}
-          secureTextEntry
-        />
-
-        <TouchableOpacity
-          style={[estilos.botaoPrimario, salvando && { opacity: 0.7 }]}
-          onPress={handleCadastrar}
-          disabled={salvando}
-        >
-          {salvando ? (
-            <ActivityIndicator color={cores.branco} />
-          ) : (
-            <Text style={estilos.botaoPrimarioTexto}>CADASTRAR</Text>
-          )}
-        </TouchableOpacity>
-
-        <View style={estilos.rodape}>
-          <Text style={estilos.textoSecundario}>
-            Já tem conta?{" "}
-          </Text>
-
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={estilos.link}>Entrar</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+          <View style={s.rodape}>
+            <Text style={s.rodapeTexto}>Já tem conta? </Text>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <Text style={s.link}>Entrar</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-function Campo({ rotulo, ...props }) {
-  return (
-    <View style={{ marginBottom: 14 }}>
-      <Text style={estilos.rotulo}>{rotulo}</Text>
-
-      <TextInput
-        style={estilos.campo}
-        placeholderTextColor={cores.placeholder}
-        {...props}
-      />
-    </View>
-  );
-}
-
-const estilos = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: cores.fundo,
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: cores.fundo },
+  conteudo: { paddingHorizontal: 16, paddingBottom: 40 },
+  intro: { fontSize: 14, color: cores.textoClaro, lineHeight: 20, marginBottom: 14, paddingHorizontal: 4 },
+  cartao: { backgroundColor: cores.superficie, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: cores.borda },
+  termos: { flexDirection: "row", alignItems: "center", marginTop: 4 },
+  check: {
+    width: 24, height: 24, borderRadius: 7, borderWidth: 2, borderColor: cores.borda,
+    alignItems: "center", justifyContent: "center", marginRight: 10,
   },
-
-  cabecalho: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-
-  voltar: {
-    fontSize: 20,
-    color: cores.texto,
-  },
-
-  titulo: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: cores.texto,
-  },
-
-  formulario: {
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-  },
-
-  rotulo: {
-    fontSize: 13,
-    color: cores.textoClaro,
-    marginBottom: 6,
-  },
-
-  campo: {
-    borderWidth: 1,
-    borderColor: cores.borda,
-    backgroundColor: cores.superficie,
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: cores.texto,
-  },
-
-  botaoPrimario: {
-    backgroundColor: cores.primaria,
-    borderRadius: 10,
-    paddingVertical: 15,
-    alignItems: "center",
-    marginTop: 12,
-  },
-
-  botaoPrimarioTexto: {
-    color: cores.branco,
-    fontWeight: "bold",
-    fontSize: 15,
-  },
-
-  rodape: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 24,
-  },
-
-  textoSecundario: {
-    color: cores.textoClaro,
-    fontSize: 13,
-  },
-
-  link: {
-    color: cores.primaria,
-    fontWeight: "bold",
-    fontSize: 13,
-  },
-
-  avisoCep: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: -8,
-    marginBottom: 12,
-  },
-
-  avisoCepTexto: {
-    fontSize: 12,
-    color: cores.textoClaro,
-  },
+  checkAtivo: { backgroundColor: cores.primaria, borderColor: cores.primaria },
+  termosTexto: { flex: 1, fontSize: 13, color: cores.texto, lineHeight: 18 },
+  erro: { fontSize: 12, color: cores.perigo, marginTop: 6 },
+  rodape: { flexDirection: "row", justifyContent: "center", marginTop: 20 },
+  rodapeTexto: { fontSize: 14, color: cores.textoClaro },
+  link: { fontSize: 14, color: cores.primaria, fontWeight: "800" },
 });

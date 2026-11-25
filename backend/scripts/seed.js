@@ -23,7 +23,8 @@ const HORARIOS = ["08h–10h", "10h–12h", "14h–16h", "16h–18h"];
 
 db.transaction(() => {
   db.exec(`
-    DELETE FROM pagamentos; DELETE FROM agendamentos; DELETE FROM itens_pedido; DELETE FROM pedidos;
+    DELETE FROM rastreamento; DELETE FROM pagamentos; DELETE FROM agendamentos; DELETE FROM itens_pedido; DELETE FROM pedidos;
+    DELETE FROM favoritos WHERE usuario_id IN (SELECT id FROM usuarios WHERE email LIKE '%@exemplo.frutevida');
     DELETE FROM usuarios WHERE email LIKE '%@exemplo.frutevida';
   `);
 
@@ -60,8 +61,9 @@ db.transaction(() => {
       }
       const total = Math.round([...itens.values()].reduce((s, { p, q }) => s + p.preco * q, 0) * 100) / 100;
 
-      const pedidoId = db.prepare("INSERT INTO pedidos (usuario_id, data_pedido, valor_total, status) VALUES (?, ?, ?, 'entregue')")
-        .run(escolher(clientes), data.toISOString(), total).lastInsertRowid;
+      const pedidoId = db.prepare(
+        "INSERT INTO pedidos (usuario_id, data_pedido, subtotal, frete, desconto, valor_total, status) VALUES (?, ?, ?, 0, 0, ?, 'entregue')"
+      ).run(escolher(clientes), data.toISOString(), total, total).lastInsertRowid;
       for (const { p, q } of itens.values()) {
         db.prepare("INSERT INTO itens_pedido (pedido_id, produto_id, quantidade, preco_unitario, subtotal) VALUES (?, ?, ?, ?, ?)")
           .run(pedidoId, p.id, q, p.preco, Math.round(p.preco * q * 100) / 100);
@@ -70,6 +72,11 @@ db.transaction(() => {
         .run(pedidoId, data.toISOString().slice(0, 10), faixa.inicio, faixa.fim);
       db.prepare("INSERT INTO pagamentos (pedido_id, forma_pagamento, valor, status, data_pagamento) VALUES (?, ?, ?, 'aprovado', ?)")
         .run(pedidoId, escolher(FORMAS_PAGAMENTO, [5, 3, 2]), total, data.toISOString());
+      // Linha do tempo completa: confirmado, separando, saiu para entrega e entregue.
+      ["confirmado", "separando", "saiu_para_entrega", "entregue"].forEach((status, i) => {
+        db.prepare("INSERT INTO rastreamento (pedido_id, status, data) VALUES (?, ?, ?)")
+          .run(pedidoId, status, new Date(data.getTime() + i * 40 * 60000).toISOString());
+      });
       pedidos++;
     }
   }

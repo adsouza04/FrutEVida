@@ -29,18 +29,23 @@ function gerarReferencia(pedidoId) {
   return `frutevida-${pedidoId}-${Date.now().toString(36)}`;
 }
 
-function montarPreferencia({ referencia, itens }) {
-  return {
-    items: itens.map((i) => ({
+// Itens do pedido em reais. O frete entra como um item à parte.
+// Com desconto, o Mercado Pago não aceita item de valor negativo, então o pedido vai como um item único com o total.
+function montarPreferencia({ referencia, itens, frete = 0, desconto = 0, total, titulo = "Pedido Frut & Vida" }) {
+  let items;
+  if (desconto > 0) {
+    items = [{ id: "pedido", title: titulo, quantity: 1, unit_price: Number(total), currency_id: "BRL" }];
+  } else {
+    items = itens.map((i) => ({
       id: String(i.produto_id),
       title: i.nome,
       quantity: i.quantidade,
       unit_price: Number(i.preco_unitario),
       currency_id: "BRL",
-    })),
-    external_reference: referencia,
-    statement_descriptor: "FRUTEVIDA",
-  };
+    }));
+    if (frete > 0) items.push({ id: "frete", title: "Frete", quantity: 1, unit_price: Number(frete), currency_id: "BRL" });
+  }
+  return { items, external_reference: referencia, statement_descriptor: "FRUTEVIDA" };
 }
 
 // Cria o link de pagamento (init_point) que o app abre no navegador.

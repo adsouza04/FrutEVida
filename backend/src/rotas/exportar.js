@@ -5,12 +5,22 @@ const express = require("express");
 const { buscarPedidoCompleto } = require("./pedidos");
 
 function montarExportacao(db) {
-  const produtos = db.prepare("SELECT id, nome, categoria, unidade, preco, estoque, ativo FROM produtos ORDER BY id").all()
+  const produtos = db.prepare("SELECT id, nome, categoria, unidade, preco, preco_antigo, estoque, ativo FROM produtos ORDER BY id").all()
     .map((p) => ({ ...p, ativo: Boolean(p.ativo) }));
   // Dados pessoais ficam de fora: o dashboard só precisa de id e data de cadastro.
   // O administrador não é cliente, então fica fora da contagem.
   const clientes = db.prepare("SELECT id, criado_em FROM usuarios WHERE perfil = 'cliente' ORDER BY id").all();
-  const pedidos = db.prepare("SELECT id FROM pedidos ORDER BY id").all().map((l) => buscarPedidoCompleto(db, l.id));
+  // Do endereço, só bairro e cidade vão para o dashboard (sem rua, número ou CEP).
+  const pedidos = db.prepare("SELECT id FROM pedidos ORDER BY id").all().map((l) => {
+    const { endereco_entrega, pagamento, cliente, ...p } = buscarPedidoCompleto(db, l.id);
+    const { link_pagamento, mp_pagamento_id, ...pagamentoResumo } = pagamento || {};
+    return {
+      ...p,
+      pagamento: pagamento ? pagamentoResumo : null,
+      bairro: endereco_entrega?.bairro || null,
+      cidade: endereco_entrega?.cidade || null,
+    };
+  });
   const faturamento = pedidos.reduce((s, p) => s + p.valor_total, 0);
 
   return {

@@ -71,3 +71,48 @@ describe("senhas", () => {
     expect(r.verificarSenha("errada", hash)).toBe(false);
   });
 });
+describe("regras do pedido compartilhadas com o app", () => {
+  test("valida CPF pelos dígitos verificadores", () => {
+    expect(r.validarCpf("529.982.247-25")).toBe(true);
+    expect(r.validarCpf("529.982.247-24")).toBe(false);
+    expect(r.validarCpf("111.111.111-11")).toBe(false);
+    expect(r.validarCpf("123")).toBe(false);
+  });
+
+  test("frete padrão é grátis a partir de R$ 100; expressa sempre cobra", () => {
+    expect(r.calcularFrete(99.9, "padrao")).toBe(7.9);
+    expect(r.calcularFrete(100, "padrao")).toBe(0);
+    expect(r.calcularFrete(150, "expressa")).toBe(14.9);
+    expect(r.calcularFrete(10, "drone")).toBeNull();
+  });
+
+  test("cupons de porcentagem, valor fixo e frete grátis", () => {
+    expect(r.calcularResumo({ subtotal: 50, cupom: "FRUTA10" })).toMatchObject({ desconto: 5, frete: 7.9, total: 52.9 });
+    expect(r.calcularResumo({ subtotal: 40, cupom: "bemvindo5" })).toMatchObject({ desconto: 5, total: 42.9 });
+    expect(r.calcularResumo({ subtotal: 20, tipoEntrega: "expressa", cupom: "FRETEGRATIS" })).toMatchObject({ frete: 0, total: 20 });
+  });
+
+  test("cupom inválido ou abaixo do mínimo explica o motivo", () => {
+    expect(r.validarCupom("XYZ", 50)).toMatchObject({ valido: false, erro: expect.stringMatching(/inválido/) });
+    expect(r.validarCupom("BEMVINDO5", 20)).toMatchObject({ valido: false, erro: expect.stringMatching(/a partir de/) });
+  });
+
+  test("etapas do pedido seguem a ordem e param na entrega", () => {
+    expect(r.proximoStatus("confirmado")).toBe("separando");
+    expect(r.proximoStatus("saiu_para_entrega")).toBe("entregue");
+    expect(r.proximoStatus("entregue")).toBeNull();
+    expect(r.proximoStatus("aguardando_pagamento")).toBeNull();
+  });
+
+  test("valida o endereço por campos", () => {
+    const ok = r.validarEndereco({ cep: "01310-100", rua: "Av. Paulista", numero: "1000", bairro: "Bela Vista", cidade: "São Paulo" });
+    expect(ok.valido).toBe(true);
+    expect(ok.endereco.cep).toBe("01310100");
+    expect(r.validarEndereco({ cep: "123" }).erros.length).toBeGreaterThan(1);
+  });
+
+  test("oferta exige preço antigo maior que o atual", () => {
+    expect(r.validarProduto({ nome: "Kiwi", preco: 10, categoria: "Frutas", preco_antigo: 12 }).valido).toBe(true);
+    expect(r.validarProduto({ nome: "Kiwi", preco: 10, categoria: "Frutas", preco_antigo: 9 }).valido).toBe(false);
+  });
+});

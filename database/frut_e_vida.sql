@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nome TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
+    cpf TEXT,
     telefone TEXT,
     cep TEXT,
     endereco TEXT,
@@ -23,6 +24,7 @@ CREATE TABLE IF NOT EXISTS produtos (
     emoji TEXT,
     destaque INTEGER NOT NULL DEFAULT 0,
     preco REAL NOT NULL,
+    preco_antigo REAL,
     estoque INTEGER NOT NULL DEFAULT 0,
     imagem TEXT,
     ativo INTEGER NOT NULL DEFAULT 1,
@@ -33,7 +35,13 @@ CREATE TABLE IF NOT EXISTS pedidos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     usuario_id INTEGER NOT NULL,
     data_pedido TEXT DEFAULT CURRENT_TIMESTAMP,
+    subtotal REAL,
+    frete REAL NOT NULL DEFAULT 0,
+    desconto REAL NOT NULL DEFAULT 0,
+    cupom TEXT,
     valor_total REAL NOT NULL,
+    tipo_entrega TEXT NOT NULL DEFAULT 'padrao',
+    endereco_entrega TEXT,
     status TEXT,
     origem_offline INTEGER NOT NULL DEFAULT 0,
     id_local TEXT UNIQUE,
@@ -75,6 +83,26 @@ CREATE TABLE IF NOT EXISTS pagamentos (
     FOREIGN KEY (pedido_id) REFERENCES pedidos(id)
 );
 
+-- Linha do tempo do pedido (cada mudança de etapa vira um registro).
+CREATE TABLE IF NOT EXISTS rastreamento (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pedido_id INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    descricao TEXT,
+    data TEXT NOT NULL,
+    FOREIGN KEY (pedido_id) REFERENCES pedidos(id)
+);
+
+CREATE TABLE IF NOT EXISTS favoritos (
+    usuario_id INTEGER NOT NULL,
+    produto_id INTEGER NOT NULL,
+    criado_em TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (usuario_id, produto_id),
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
+    FOREIGN KEY (produto_id) REFERENCES produtos(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_rastreamento_pedido ON rastreamento(pedido_id);
 CREATE INDEX IF NOT EXISTS idx_pedidos_usuario ON pedidos(usuario_id);
 CREATE INDEX IF NOT EXISTS idx_itens_pedido_pedido ON itens_pedido(pedido_id);
 CREATE INDEX IF NOT EXISTS idx_itens_pedido_produto ON itens_pedido(produto_id);

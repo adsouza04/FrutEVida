@@ -2,12 +2,12 @@
 
 const arredondar = (valor) => Math.round(valor * 100) / 100;
 
-function adicionarItem(itens, produto) {
+function adicionarItem(itens, produto, quantidade = 1) {
   const existente = itens.find((i) => i.produto.id === produto.id);
   if (existente) {
-    return itens.map((i) => (i.produto.id === produto.id ? { ...i, quantidade: i.quantidade + 1 } : i));
+    return itens.map((i) => (i.produto.id === produto.id ? { ...i, quantidade: i.quantidade + quantidade } : i));
   }
-  return [...itens, { produto, quantidade: 1 }];
+  return [...itens, { produto, quantidade }];
 }
 
 function alterarQuantidadeItem(itens, produtoId, delta) {

@@ -1,67 +1,31 @@
-import React, { useMemo, useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  FlatList,
-  StyleSheet,
-  ScrollView,
-  Alert,
-} from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import React, { useMemo } from "react";
+import { View, Text, TouchableOpacity, FlatList, StyleSheet, ScrollView } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import cores from "../tema/cores";
 import { CATEGORIAS, CATEGORIA_ICONE } from "../dados/produtos";
 import { useProdutos } from "../contexto/ContextoProdutos";
-import { useCarrinho } from "../contexto/ContextoCarrinho";
 import { useUsuario } from "../contexto/ContextoUsuario";
-import ImagemProduto from "../componentes/ImagemProduto";
-import { formatarPreco } from "../utils/validacoes";
+import CartaoProduto from "../componentes/CartaoProduto";
+import Icone from "../componentes/Icone";
+import { useAlturaAbas } from "../componentes/BarraAbas";
+import { FRETE_GRATIS_A_PARTIR_DE } from "../utils/regrasPedido";
 
-const ESTOQUE_BAIXO = 5;
-
+// Tela Início: atalhos de categoria, ofertas e destaques. A busca completa fica na aba Buscar.
 export default function TelaPrincipal({ navigation }) {
   const { produtos, carregando, sincronizando, sincronizar, status } = useProdutos();
-  const { usuario, sair } = useUsuario();
-  const { itens, adicionarAoCarrinho, quantidadeTotal, total, limparCarrinho } = useCarrinho();
-
-  const insets = useSafeAreaInsets();
-  const baseInferior = Math.max(insets.bottom, 12);
-  const [busca, setBusca] = useState("");
-  const [categoria, setCategoria] = useState(null);
-
-  const ehAdmin = usuario?.perfil === "admin";
+  const { usuario } = useUsuario();
+  const alturaAbas = useAlturaAbas();
   const primeiroNome = usuario?.nome?.split(" ")[0];
 
-  const filtrados = useMemo(() => {
-    const termo = busca.trim().toLowerCase();
-    return produtos.filter(
-      (p) =>
-        (!categoria || p.categoria === categoria) &&
-        (!termo || p.nome.toLowerCase().includes(termo))
-    );
-  }, [produtos, categoria, busca]);
+  const ofertas = useMemo(() => produtos.filter((p) => p.preco_antigo && p.estoque > 0), [produtos]);
+  const destaques = useMemo(() => {
+    const lista = produtos.filter((p) => p.destaque);
+    return lista.length ? lista : produtos.slice(0, 8);
+  }, [produtos]);
 
-  function quantidadeNoCarrinho(id) {
-    return itens.find((i) => i.produto.id === id)?.quantidade || 0;
-  }
-
-  function adicionar(produto) {
-    const noCarrinho = quantidadeNoCarrinho(produto.id);
-    if (produto.estoque !== undefined && noCarrinho >= produto.estoque) {
-      Alert.alert("Estoque esgotado", `Temos só ${produto.estoque} unidade(s) de ${produto.nome} no momento.`);
-      return;
-    }
-    adicionarAoCarrinho(produto);
-  }
-
-  function confirmarSaida() {
-    Alert.alert("Sair da conta", "Deseja sair? Os itens do carrinho serão descartados.", [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Sair", style: "destructive", onPress: () => { limparCarrinho(); sair(); navigation.replace("Login"); } },
-    ]);
-  }
+  const abrirProduto = (p) => navigation.navigate("Produto", { produtoId: p.id });
+  const abrirCategoria = (c) => navigation.navigate("Buscar", { categoria: c });
 
   const cabecalho = (
     <>
@@ -70,73 +34,75 @@ export default function TelaPrincipal({ navigation }) {
           <Text style={s.saudacao}>Olá{primeiroNome ? `, ${primeiroNome}` : ""}!</Text>
           <Text style={s.titulo}>O que vamos levar hoje?</Text>
         </View>
-
-        <TouchableOpacity style={s.avatar} onPress={confirmarSaida} accessibilityLabel="Minha conta">
+        <TouchableOpacity style={s.avatar} onPress={() => navigation.navigate("Perfil")} accessibilityLabel="Meu perfil">
           <Text style={s.avatarTexto}>{(primeiroNome || "?").charAt(0).toUpperCase()}</Text>
         </TouchableOpacity>
       </View>
 
       {status.online === false && (
         <TouchableOpacity style={s.aviso} onPress={sincronizar}>
-          <Text style={s.avisoTexto}>
-            Sem conexão com a loja. Você está vendo o catálogo salvo no celular. Toque para tentar de novo.
-          </Text>
+          <Icone nome="cloud-offline-outline" tamanho={18} cor="#6B5418" estilo={{ marginRight: 8 }} />
+          <Text style={s.avisoTexto}>Sem conexão com a loja. Mostrando o catálogo salvo. Toque para tentar de novo.</Text>
         </TouchableOpacity>
       )}
       {status.pendentes > 0 && (
         <View style={s.aviso}>
-          <Text style={s.avisoTexto}>
-            {status.pendentes} pedido(s) salvos no celular serão enviados assim que a conexão voltar.
-          </Text>
+          <Icone nome="time-outline" tamanho={18} cor="#6B5418" estilo={{ marginRight: 8 }} />
+          <Text style={s.avisoTexto}>{status.pendentes} pedido(s) salvos no celular serão enviados quando a conexão voltar.</Text>
         </View>
       )}
 
-      <View style={s.busca}>
-        <Text style={s.lupa}>⌕</Text>
-        <TextInput
-          style={s.buscaInput}
-          placeholder="Buscar frutas, verduras e mais"
-          placeholderTextColor={cores.placeholder}
-          value={busca}
-          onChangeText={setBusca}
-          returnKeyType="search"
-        />
-        {busca ? (
-          <TouchableOpacity onPress={() => setBusca("")} accessibilityLabel="Limpar busca">
-            <Text style={s.limpar}>✕</Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
+      <TouchableOpacity style={s.busca} onPress={() => navigation.navigate("Buscar", { focar: true })} activeOpacity={0.8}>
+        <Icone nome="search" tamanho={20} cor={cores.primaria} />
+        <Text style={s.buscaTexto}>Buscar frutas, verduras e mais</Text>
+      </TouchableOpacity>
 
       <View style={s.banner}>
-        <Text style={s.bannerTitulo}>Colhido fresco, entregue no seu horário.</Text>
-        <Text style={s.bannerSub}>
-          Monte sua cesta e escolha a janela de entrega no pagamento.
-        </Text>
+        <View style={{ flex: 1 }}>
+          <Text style={s.bannerTitulo}>Colhido fresco, entregue no seu horário.</Text>
+          <Text style={s.bannerSub}>
+            Frete grátis a partir de R$ {FRETE_GRATIS_A_PARTIR_DE},00. Use o cupom BEMVINDO5 e ganhe R$ 5 em compras acima de R$ 30.
+          </Text>
+        </View>
+        <Icone nome="leaf" tamanho={54} cor="rgba(255,255,255,0.22)" />
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={s.categorias}
-      >
-        <Chip rotulo="Todos" ativo={!categoria} onPress={() => setCategoria(null)} />
+      <Text style={s.secaoTitulo}>Categorias</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.categorias}>
         {CATEGORIAS.map((c) => (
-          <Chip
-            key={c}
-            rotulo={c}
-            icone={CATEGORIA_ICONE[c]}
-            ativo={categoria === c}
-            onPress={() => setCategoria(categoria === c ? null : c)}
-          />
+          <TouchableOpacity key={c} style={s.categoria} onPress={() => abrirCategoria(c)}>
+            <View style={s.categoriaBolha}>
+              <Text style={s.categoriaEmoji}>{CATEGORIA_ICONE[c]}</Text>
+            </View>
+            <Text style={s.categoriaTexto}>{c}</Text>
+          </TouchableOpacity>
         ))}
       </ScrollView>
 
-      <View style={s.secaoLinha}>
-        <Text style={s.secaoTitulo}>{categoria || "Todos os produtos"}</Text>
-        <Text style={s.secaoContagem}>
-          {filtrados.length} {filtrados.length === 1 ? "item" : "itens"}
-        </Text>
+      {ofertas.length > 0 && (
+        <>
+          <View style={s.secaoLinha}>
+            <Text style={s.secaoTitulo}>Ofertas da semana</Text>
+            <TouchableOpacity onPress={() => navigation.navigate("Buscar", { ofertas: true })}>
+              <Text style={s.verTodos}>Ver todas</Text>
+            </TouchableOpacity>
+          </View>
+          <FlatList
+            horizontal
+            data={ofertas}
+            keyExtractor={(p) => `oferta-${p.id}`}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 12, paddingRight: 16 }}
+            renderItem={({ item }) => <CartaoProduto produto={item} largura={164} onPress={() => abrirProduto(item)} />}
+          />
+        </>
+      )}
+
+      <View style={[s.secaoLinha, { marginTop: 8 }]}>
+        <Text style={s.secaoTitulo}>Mais pedidos</Text>
+        <TouchableOpacity onPress={() => navigation.navigate("Buscar")}>
+          <Text style={s.verTodos}>Ver catálogo</Text>
+        </TouchableOpacity>
       </View>
     </>
   );
@@ -144,216 +110,59 @@ export default function TelaPrincipal({ navigation }) {
   return (
     <SafeAreaView style={s.container} edges={["top"]}>
       <FlatList
-        data={filtrados}
-        keyExtractor={(i) => String(i.id)}
+        data={destaques}
+        keyExtractor={(p) => String(p.id)}
         numColumns={2}
+        columnWrapperStyle={{ gap: 12 }}
+        contentContainerStyle={[s.conteudo, { paddingBottom: alturaAbas + 16 }]}
         ListHeaderComponent={cabecalho}
-        contentContainerStyle={s.conteudo}
-        columnWrapperStyle={s.colunas}
         refreshing={sincronizando}
         onRefresh={sincronizar}
-        keyboardShouldPersistTaps="handled"
-        renderItem={({ item }) => {
-          const esgotado = item.estoque !== undefined && item.estoque <= 0;
-          const ultimas = !esgotado && item.estoque !== undefined && item.estoque <= ESTOQUE_BAIXO;
-          const qtd = quantidadeNoCarrinho(item.id);
-          return (
-            <View style={[s.card, esgotado && { opacity: 0.55 }]}>
-              <ImagemProduto produto={item} estilo={s.cardImagem} tamanhoEmoji={56} />
-              {(esgotado || ultimas) && (
-                <View style={[s.selo, esgotado && s.seloEsgotado]}>
-                  <Text style={[s.seloTexto, esgotado && { color: cores.branco }]}>
-                    {esgotado ? "Esgotado" : "Últimas unidades"}
-                  </Text>
-                </View>
-              )}
-
-              <Text style={s.cardNome} numberOfLines={1}>{item.nome}</Text>
-              <Text style={s.unidade}>{item.unidade || item.categoria}</Text>
-
-              <View style={s.cardRodape}>
-                <Text style={s.preco}>{formatarPreco(item.preco)}</Text>
-                <TouchableOpacity
-                  testID={`adicionar-${item.id}`}
-                  style={[s.mais, qtd > 0 && s.maisAtivo, esgotado && { backgroundColor: cores.borda }]}
-                  onPress={() => adicionar(item)}
-                  disabled={esgotado}
-                  accessibilityLabel={`Adicionar ${item.nome} ao carrinho`}
-                >
-                  <Text style={s.maisTexto}>{qtd > 0 ? qtd : "+"}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          );
-        }}
+        renderItem={({ item }) => <CartaoProduto produto={item} onPress={() => abrirProduto(item)} />}
         ListEmptyComponent={
-          <View style={s.vazioBox}>
-            <Text style={s.vazioTitulo}>
-              {carregando ? "Carregando produtos..." : "Nenhum produto encontrado"}
-            </Text>
-            {!carregando && (busca || categoria) ? (
-              <TouchableOpacity onPress={() => { setBusca(""); setCategoria(null); }}>
-                <Text style={s.vazioLink}>Limpar filtros</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
+          <Text style={s.vazio}>{carregando ? "Carregando produtos..." : "Nenhum produto disponível no momento."}</Text>
         }
-        ListFooterComponent={<View style={{ height: (quantidadeTotal > 0 ? 160 : 90) + baseInferior }} />}
       />
-
-      {quantidadeTotal > 0 && (
-        <TouchableOpacity style={[s.barraCarrinho, { bottom: baseInferior + 80 }]} onPress={() => navigation.navigate("Carrinho")}>
-          <View style={s.barraQtd}>
-            <Text style={s.barraQtdTexto}>{quantidadeTotal}</Text>
-          </View>
-          <Text style={s.barraTexto}>Ver carrinho</Text>
-          <Text style={s.barraTotal}>{formatarPreco(total)}</Text>
-        </TouchableOpacity>
-      )}
-
-      <View style={[s.nav, { bottom: baseInferior }]}>
-        <ItemNav icone="⌂" rotulo="Início" ativo />
-        <ItemNav icone="☰" rotulo="Pedidos" onPress={() => navigation.navigate("Pedidos")} />
-        <ItemNav
-          icone="🛒"
-          rotulo="Carrinho"
-          contador={quantidadeTotal}
-          onPress={() => navigation.navigate("Carrinho")}
-        />
-        {ehAdmin && (
-          <ItemNav icone="⚙" rotulo="Admin" onPress={() => navigation.navigate("Admin")} />
-        )}
-      </View>
     </SafeAreaView>
-  );
-}
-
-function Chip({ rotulo, icone, ativo, onPress }) {
-  return (
-    <TouchableOpacity style={[s.chip, ativo && s.chipAtivo]} onPress={onPress}>
-      {icone ? <Text style={s.chipIcone}>{icone}</Text> : null}
-      <Text style={[s.chipTexto, ativo && s.chipTextoAtivo]}>{rotulo}</Text>
-    </TouchableOpacity>
-  );
-}
-
-function ItemNav({ icone, rotulo, ativo, contador, onPress }) {
-  return (
-    <TouchableOpacity style={s.navItem} onPress={onPress} disabled={!onPress}>
-      <View>
-        <Text style={[s.navIcone, ativo && { color: cores.primaria }]}>{icone}</Text>
-        {contador > 0 && (
-          <View style={s.badge}>
-            <Text style={s.badgeTexto}>{contador}</Text>
-          </View>
-        )}
-      </View>
-      <Text style={[s.navTexto, ativo && s.navAtivo]}>{rotulo}</Text>
-    </TouchableOpacity>
   );
 }
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: cores.fundo },
   conteudo: { paddingHorizontal: 16 },
-  colunas: { gap: 12 },
-
   topo: { flexDirection: "row", alignItems: "center", paddingTop: 12, paddingBottom: 16 },
   saudacao: { fontSize: 14, color: cores.textoClaro, fontWeight: "600" },
   titulo: { fontSize: 24, fontWeight: "800", color: cores.texto, marginTop: 2, letterSpacing: -0.3 },
   avatar: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: cores.primaria,
-    alignItems: "center", justifyContent: "center",
+    width: 44, height: 44, borderRadius: 22, backgroundColor: cores.primaria, alignItems: "center", justifyContent: "center",
   },
   avatarTexto: { color: cores.branco, fontSize: 18, fontWeight: "800" },
-
   aviso: {
-    backgroundColor: cores.destaque, borderRadius: 12, padding: 12, marginBottom: 12,
-    borderWidth: 1, borderColor: "#F1DFAE",
+    flexDirection: "row", alignItems: "center", backgroundColor: cores.destaque, borderRadius: 12, padding: 12,
+    marginBottom: 12, borderWidth: 1, borderColor: "#F1DFAE",
   },
-  avisoTexto: { fontSize: 12, color: "#6B5418", lineHeight: 17 },
-
+  avisoTexto: { flex: 1, fontSize: 12, color: "#6B5418", lineHeight: 17 },
   busca: {
-    height: 48, borderRadius: 14, backgroundColor: cores.superficie, flexDirection: "row",
-    alignItems: "center", paddingHorizontal: 14, borderWidth: 1, borderColor: cores.borda, marginBottom: 16,
+    height: 50, borderRadius: 14, backgroundColor: cores.superficie, flexDirection: "row", alignItems: "center",
+    paddingHorizontal: 14, borderWidth: 1, borderColor: cores.borda, marginBottom: 16, gap: 10,
   },
-  lupa: { fontSize: 22, color: cores.primaria, marginRight: 8 },
-  buscaInput: { flex: 1, fontSize: 15, color: cores.texto },
-  limpar: { fontSize: 14, color: cores.textoClaro, paddingHorizontal: 4 },
-
-  banner: { backgroundColor: cores.primaria, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 18 },
-  bannerTitulo: { fontSize: 20, lineHeight: 25, fontWeight: "800", color: cores.branco, maxWidth: 260 },
-  bannerSub: { fontSize: 13, lineHeight: 18, color: "#D5E6D6", marginTop: 6, maxWidth: 280 },
-
-  categorias: { gap: 8, paddingVertical: 16, paddingRight: 8 },
-  chip: {
-    flexDirection: "row", alignItems: "center", height: 38, paddingHorizontal: 14, borderRadius: 19,
-    backgroundColor: cores.superficie, borderWidth: 1, borderColor: cores.borda,
+  buscaTexto: { fontSize: 15, color: cores.placeholder },
+  banner: {
+    flexDirection: "row", alignItems: "center", backgroundColor: cores.primaria, borderRadius: 20,
+    paddingHorizontal: 20, paddingVertical: 18, overflow: "hidden",
   },
-  chipAtivo: { backgroundColor: cores.primariaEscura, borderColor: cores.primariaEscura },
-  chipIcone: { fontSize: 16, marginRight: 6 },
-  chipTexto: { fontSize: 13, color: cores.texto, fontWeight: "600" },
-  chipTextoAtivo: { color: cores.branco },
-
-  secaoLinha: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 },
-  secaoTitulo: { fontSize: 18, fontWeight: "800", color: cores.texto },
-  secaoContagem: { fontSize: 12, color: cores.textoClaro },
-
-  card: {
-    flex: 1, maxWidth: "48.5%", backgroundColor: cores.superficie, borderRadius: 18, padding: 8,
-    marginBottom: 12, borderWidth: 1, borderColor: cores.borda,
+  bannerTitulo: { fontSize: 19, lineHeight: 24, fontWeight: "800", color: cores.branco },
+  bannerSub: { fontSize: 13, lineHeight: 18, color: "#D5E6D6", marginTop: 6 },
+  secaoLinha: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },
+  secaoTitulo: { fontSize: 18, fontWeight: "800", color: cores.texto, marginTop: 20, marginBottom: 12 },
+  verTodos: { fontSize: 13, color: cores.primaria, fontWeight: "800" },
+  categorias: { gap: 14, paddingRight: 16 },
+  categoria: { alignItems: "center", width: 66 },
+  categoriaBolha: {
+    width: 62, height: 62, borderRadius: 20, backgroundColor: cores.superficie, borderWidth: 1,
+    borderColor: cores.borda, alignItems: "center", justifyContent: "center",
   },
-  cardImagem: { height: 128, borderRadius: 13 },
-  selo: {
-    position: "absolute", left: 14, top: 14, backgroundColor: cores.destaque,
-    borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
-  },
-  seloEsgotado: { backgroundColor: cores.perigo },
-  seloTexto: { fontSize: 10, color: "#6B5418", fontWeight: "800" },
-  cardNome: { fontSize: 14, fontWeight: "800", color: cores.texto, marginTop: 10, paddingHorizontal: 4 },
-  unidade: { fontSize: 12, color: cores.textoClaro, marginTop: 2, paddingHorizontal: 4 },
-  cardRodape: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    marginTop: 10, paddingLeft: 4,
-  },
-  preco: { fontSize: 15, fontWeight: "900", color: cores.primariaEscura },
-  mais: {
-    minWidth: 34, height: 34, borderRadius: 11, backgroundColor: cores.primaria,
-    alignItems: "center", justifyContent: "center", paddingHorizontal: 8,
-  },
-  maisAtivo: { backgroundColor: cores.secundaria },
-  maisTexto: { fontSize: 17, color: cores.branco, fontWeight: "800" },
-
-  vazioBox: { alignItems: "center", marginVertical: 40 },
-  vazioTitulo: { color: cores.textoClaro, fontSize: 14 },
-  vazioLink: { color: cores.primaria, fontWeight: "800", marginTop: 10 },
-
-  barraCarrinho: {
-    position: "absolute", left: 16, right: 16, bottom: 92, height: 56, borderRadius: 16,
-    backgroundColor: cores.primariaEscura, flexDirection: "row", alignItems: "center", paddingHorizontal: 12,
-    shadowColor: cores.sombra, shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
-  barraQtd: {
-    minWidth: 30, height: 30, borderRadius: 9, backgroundColor: cores.secundaria,
-    alignItems: "center", justifyContent: "center", paddingHorizontal: 6,
-  },
-  barraQtdTexto: { color: cores.branco, fontWeight: "900" },
-  barraTexto: { flex: 1, color: cores.branco, fontWeight: "800", fontSize: 15, marginLeft: 12 },
-  barraTotal: { color: cores.branco, fontWeight: "900", fontSize: 15 },
-
-  nav: {
-    position: "absolute", left: 12, right: 12, bottom: 12, height: 68, borderRadius: 22,
-    backgroundColor: cores.superficie, flexDirection: "row", justifyContent: "space-around",
-    alignItems: "center", borderWidth: 1, borderColor: cores.borda,
-  },
-  navItem: { alignItems: "center", justifyContent: "center", minWidth: 64 },
-  navIcone: { fontSize: 20, color: cores.textoClaro },
-  navTexto: { fontSize: 11, color: cores.textoClaro, marginTop: 3 },
-  navAtivo: { color: cores.primaria, fontWeight: "800" },
-  badge: {
-    position: "absolute", right: -10, top: -6, backgroundColor: cores.secundaria, minWidth: 18,
-    height: 18, borderRadius: 9, alignItems: "center", justifyContent: "center", paddingHorizontal: 4,
-  },
-  badgeTexto: { fontSize: 10, color: cores.branco, fontWeight: "900" },
+  categoriaEmoji: { fontSize: 28 },
+  categoriaTexto: { fontSize: 12, color: cores.texto, marginTop: 6, fontWeight: "600" },
+  vazio: { textAlign: "center", color: cores.textoClaro, marginVertical: 30 },
 });

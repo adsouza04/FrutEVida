@@ -45,10 +45,19 @@ export const api = {
   // Usuários
   cadastrar: (dados) => requisicao("POST", "/usuarios", dados),
   login: (email, senha) => requisicao("POST", "/login", { email, senha }),
+  salvarEndereco: (usuarioId, endereco) => requisicao("PUT", `/usuarios/${usuarioId}/endereco`, endereco),
+
+  // Favoritos
+  listarFavoritos: (usuarioId) => requisicao("GET", `/usuarios/${usuarioId}/favoritos`),
+  favoritar: (usuarioId, produtoId) => requisicao("POST", `/usuarios/${usuarioId}/favoritos`, { produto_id: Number(produtoId) }),
+  desfavoritar: (usuarioId, produtoId) => requisicao("DELETE", `/usuarios/${usuarioId}/favoritos/${produtoId}`),
 
   // Pedidos
   criarPedido: (dados) => requisicao("POST", "/pedidos", dados),
   listarPedidos: (usuarioId) => requisicao("GET", `/pedidos?usuario_id=${usuarioId}`),
+  listarTodosPedidos: () => requisicao("GET", "/pedidos"),
+  obterPedido: (pedidoId) => requisicao("GET", `/pedidos/${pedidoId}`),
+  avancarPedido: (pedidoId) => requisicao("POST", `/pedidos/${pedidoId}/avancar`),
 
   // Verifica o pagamento de um pedido no Mercado Pago e atualiza o status do pedido.
   verificarPagamento: (pedidoId) => requisicao("POST", `/pedidos/${pedidoId}/verificar-pagamento`, null, { tempoLimite: 15000 }),
@@ -63,10 +72,10 @@ export async function buscarCep(cep) {
   const dados = await requisicao("GET", `/ws/${numeros}/json/`, null, { base: "https://viacep.com.br" });
   if (dados.erro) throw new ErroApi("CEP não encontrado.", { status: 404 });
   return {
-    logradouro: dados.logradouro,
-    bairro: dados.bairro,
-    cidade: dados.localidade,
-    uf: dados.uf,
-    texto: `${dados.logradouro}, ${dados.bairro} - ${dados.localidade}/${dados.uf}`,
+    cep: numeros,
+    rua: dados.logradouro || "",
+    bairro: dados.bairro || "",
+    cidade: dados.localidade || "",
+    uf: dados.uf || "",
   };
 }

@@ -22,7 +22,7 @@ beforeEach(async () => {
     return new Response("{}", { status: 404 });
   });
   app = criarApp(abrirBanco(":memory:"));
-  usuario = (await request(app).post("/usuarios").send({ nome: "Ana", email: "ana@t.com", senha: "123456" })).body;
+  usuario = (await request(app).post("/usuarios").send({ nome: "Ana", email: "ana@t.com", cpf: "10003167690", senha: "12345678" })).body;
 });
 
 afterEach(() => {
@@ -46,6 +46,13 @@ describe("funções do Mercado Pago (unitário)", () => {
     const pref = mp.montarPreferencia({ referencia: "ref-1", itens: [{ produto_id: 1, nome: "Maçã", quantidade: 2, preco_unitario: 7.9 }] });
     expect(pref).toMatchObject({ external_reference: "ref-1" });
     expect(pref.items[0]).toEqual({ id: "1", title: "Maçã", quantity: 2, unit_price: 7.9, currency_id: "BRL" });
+  });
+  test("inclui o frete como item e, com desconto, envia o total num item único", () => {
+    const itens = [{ produto_id: 1, nome: "Maçã", quantidade: 2, preco_unitario: 7.9 }];
+    const comFrete = mp.montarPreferencia({ referencia: "r", itens, frete: 7.9, total: 23.7 });
+    expect(comFrete.items.map((i) => i.title)).toEqual(["Maçã", "Frete"]);
+    const comDesconto = mp.montarPreferencia({ referencia: "r", itens, frete: 7.9, desconto: 1.58, total: 22.12, titulo: "Pedido FV-000001" });
+    expect(comDesconto.items).toEqual([{ id: "pedido", title: "Pedido FV-000001", quantity: 1, unit_price: 22.12, currency_id: "BRL" }]);
   });
 });
 

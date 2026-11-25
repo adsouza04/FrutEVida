@@ -7,9 +7,10 @@ para o Projeto Integrador IV – Desenvolvimento para Dispositivos Móveis (Sena
 
 | Pasta | Conteúdo |
 |---|---|
-| `src/telas` | 7 telas: Login, Cadastro, Principal (catálogo), Carrinho, Pagamento, Meus pedidos e Administração |
-| `src/componentes` | Componentes reutilizáveis (cabeçalho e imagem do produto) |
+| `src/telas` | 14 telas: Login, Cadastro, Início, Buscar, Produto, Carrinho, Checkout, Pedido confirmado, Meus pedidos, Rastreamento, Perfil, Favoritos, Endereço e Administração |
+| `src/componentes` | Componentes reutilizáveis (barra de abas, card de produto, campos, botões, formulário de endereço etc.) |
 | `src/contexto` | Estado global com Context API (usuário, produtos, carrinho) |
+| `src/utils` | Regras compartilhadas com o servidor (frete, cupons, CPF, etapas do pedido), máscaras e validações |
 | `src/servicos` | Consumo da API REST, ViaCEP (Correios) e sincronização offline |
 | `src/dados` | Banco local SQLite do celular (cache de produtos e fila de pedidos offline) |
 | `backend` | API REST em Node.js/Express + SQLite, integração com Mercado Pago e testes |
@@ -37,9 +38,13 @@ npx expo start
 
 Escaneie o QR Code com o Expo Go.
 
+### Cupons para testar
+
+`FRUTA10` (10% nos produtos), `FRETEGRATIS` (frete grátis) e `BEMVINDO5` (R$ 5 em compras a partir de R$ 30).
+
 ### Contas
 
-- **Administrador:** `admin@frutevida.com` / `admin123` (criada automaticamente pelo backend). Só essa conta vê a área de administração.
+- **Administrador:** `admin@frutevida.com` / `admin123` (criada automaticamente pelo backend). Só essa conta vê a Administração (no Perfil), onde cadastra, edita e exclui produtos e avança as etapas dos pedidos.
 - **Cliente:** crie pela tela de cadastro.
 
 ### Dados de exemplo para o dashboard

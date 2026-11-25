@@ -2,25 +2,50 @@ import React, { createContext, useContext, useMemo, useState } from "react";
 import {
   adicionarItem, alterarQuantidadeItem, removerItem, calcularTotal, contarItens,
 } from "../utils/carrinho";
+import { calcularResumo, validarCupom } from "../utils/regrasPedido";
 
 const ContextoCarrinho = createContext(null);
 
 export function ProvedorCarrinho({ children }) {
   const [itens, setItens] = useState([]); // [{ produto, quantidade }]
+  const [cupom, setCupom] = useState(null); // código do cupom aplicado
 
-  const total = useMemo(() => calcularTotal(itens), [itens]);
+  const total = useMemo(() => calcularTotal(itens), [itens]); // soma dos produtos
   const quantidadeTotal = useMemo(() => contarItens(itens), [itens]);
+
+  // Resumo com frete e desconto para um tipo de entrega (o servidor recalcula ao finalizar).
+  function resumo(tipoEntrega = "padrao") {
+    return calcularResumo({ subtotal: total, tipoEntrega, cupom });
+  }
+
+  // Retorna null se aplicou, ou a mensagem de erro.
+  function aplicarCupom(codigo) {
+    const r = validarCupom(codigo, total);
+    if (!r.valido) return r.erro;
+    setCupom(r.cupom.codigo);
+    return null;
+  }
+
+  function limparCarrinho() {
+    setItens([]);
+    setCupom(null);
+  }
 
   return (
     <ContextoCarrinho.Provider
       value={{
         itens,
-        adicionarAoCarrinho: (produto) => setItens((atual) => adicionarItem(atual, produto)),
+        adicionarAoCarrinho: (produto, quantidade = 1) => setItens((atual) => adicionarItem(atual, produto, quantidade)),
         removerDoCarrinho: (id) => setItens((atual) => removerItem(atual, id)),
         alterarQuantidade: (id, delta) => setItens((atual) => alterarQuantidadeItem(atual, id, delta)),
-        limparCarrinho: () => setItens([]),
+        quantidadeDe: (id) => itens.find((i) => i.produto.id === id)?.quantidade || 0,
+        limparCarrinho,
         total,
         quantidadeTotal,
+        cupom,
+        aplicarCupom,
+        removerCupom: () => setCupom(null),
+        resumo,
       }}
     >
       {children}

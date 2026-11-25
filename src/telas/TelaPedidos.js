@@ -1,30 +1,32 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
 import cores from "../tema/cores";
 import { api } from "../servicos/api";
 import { useUsuario } from "../contexto/ContextoUsuario";
-import Cabecalho from "../componentes/Cabecalho";
+import TituloAba from "../componentes/TituloAba";
+import SeloSituacao from "../componentes/SeloSituacao";
+import EstadoVazio from "../componentes/EstadoVazio";
+import Icone from "../componentes/Icone";
+import { useAlturaAbas } from "../componentes/BarraAbas";
 import { formatarPreco } from "../utils/validacoes";
+import { emAndamento, progresso, formatarData, textoEntrega } from "../utils/pedidos";
+import { ETAPAS_PEDIDO } from "../utils/regrasPedido";
 
-// Rótulo e cor de cada situação que o pedido pode ter no servidor.
-const SITUACAO = {
-  confirmado: { rotulo: "Confirmado", fundo: cores.primariaClara, texto: cores.primariaEscura },
-  aguardando_pagamento: { rotulo: "Aguardando pagamento", fundo: cores.destaque, texto: "#6B5418" },
-  cancelado: { rotulo: "Cancelado", fundo: "#F9E3E3", texto: cores.perigo },
-};
-
-function formatarData(iso) {
-  if (!iso) return "";
-  const [ano, mes, dia] = iso.slice(0, 10).split("-");
-  return `${dia}/${mes}/${ano}`;
-}
+const FILTROS = [
+  { id: "todos", rotulo: "Todos" },
+  { id: "andamento", rotulo: "Em andamento" },
+  { id: "entregues", rotulo: "Entregues" },
+];
 
 export default function TelaPedidos({ navigation }) {
   const { usuario } = useUsuario();
+  const alturaAbas = useAlturaAbas();
   const [pedidos, setPedidos] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
+  const [filtro, setFiltro] = useState("todos");
 
   const carregar = useCallback(async () => {
     if (!usuario) return;
@@ -43,102 +45,116 @@ export default function TelaPedidos({ navigation }) {
     carregar();
   }, [carregar]);
 
+  const lista = useMemo(() => {
+    if (filtro === "andamento") return pedidos.filter((p) => emAndamento(p.status));
+    if (filtro === "entregues") return pedidos.filter((p) => p.status === "entregue");
+    return pedidos;
+  }, [pedidos, filtro]);
+
   return (
-    <SafeAreaView style={s.container}>
-      <Cabecalho titulo="Meus pedidos" onVoltar={() => navigation.goBack()} />
+    <SafeAreaView style={s.container} edges={["top"]}>
+      <TituloAba titulo="Meus pedidos" />
+
+      {pedidos.length > 0 && (
+        <View style={s.filtros}>
+          {FILTROS.map((f) => (
+            <TouchableOpacity key={f.id} style={[s.chip, filtro === f.id && s.chipAtivo]} onPress={() => setFiltro(f.id)}>
+              <Text style={[s.chipTexto, filtro === f.id && { color: cores.branco }]}>{f.rotulo}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       {carregando && pedidos.length === 0 ? (
         <ActivityIndicator style={{ marginTop: 40 }} color={cores.primaria} />
       ) : (
         <FlatList
-          data={pedidos}
+          data={lista}
           keyExtractor={(p) => String(p.id)}
-          contentContainerStyle={s.lista}
+          contentContainerStyle={[s.lista, { paddingBottom: alturaAbas + 16 }]}
           refreshing={carregando}
           onRefresh={carregar}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
           ListHeaderComponent={erro ? <Text style={s.erro}>{erro}</Text> : null}
           ListEmptyComponent={
-            !erro ? (
-              <View style={s.vazioBox}>
-                <Text style={s.vazioTitulo}>Você ainda não fez pedidos</Text>
-                <Text style={s.vazioTexto}>Quando finalizar uma compra, ela aparece aqui com o horário de entrega.</Text>
-                <TouchableOpacity style={s.botao} onPress={() => navigation.navigate("Principal")}>
-                  <Text style={s.botaoTexto}>Ir às compras</Text>
-                </TouchableOpacity>
-              </View>
-            ) : null
+            erro ? null : pedidos.length === 0 ? (
+              <EstadoVazio
+                icone="receipt-outline"
+                titulo="Nenhum pedido por aqui"
+                texto="Quando você finalizar uma compra, ela aparece aqui para você acompanhar a entrega."
+                acao="Ir às compras"
+                onAcao={() => navigation.navigate("Inicio")}
+              />
+            ) : (
+              <Text style={s.semFiltro}>Nenhum pedido neste filtro.</Text>
+            )
           }
-          renderItem={({ item }) => {
-            const situacao = SITUACAO[item.status] || { rotulo: item.status, fundo: cores.borda, texto: cores.texto };
-            const entrega = item.agendamento;
-            return (
-              <View style={s.card}>
-                <View style={s.cardTopo}>
-                  <Text style={s.numero}>Pedido nº {item.id}</Text>
-                  <View style={[s.situacao, { backgroundColor: situacao.fundo }]}>
-                    <Text style={[s.situacaoTexto, { color: situacao.texto }]}>{situacao.rotulo}</Text>
-                  </View>
-                </View>
-
-                <Text style={s.data}>Feito em {formatarData(item.data_pedido)}</Text>
-
-                <View style={s.itens}>
-                  {item.itens.map((i) => (
-                    <View key={i.produto_id} style={s.itemLinha}>
-                      <Text style={s.itemNome} numberOfLines={1}>{i.quantidade}× {i.nome}</Text>
-                      <Text style={s.itemValor}>{formatarPreco(i.subtotal)}</Text>
-                    </View>
-                  ))}
-                </View>
-
-                <View style={s.rodape}>
-                  <View style={{ flex: 1 }}>
-                    {entrega ? (
-                      <Text style={s.entrega}>
-                        Entrega {formatarData(entrega.data_entrega)}, {entrega.horario_inicio.slice(0, 2)}h às {entrega.horario_fim.slice(0, 2)}h
-                      </Text>
-                    ) : null}
-                    <Text style={s.pagamento}>{item.pagamento?.forma_pagamento}</Text>
-                  </View>
-                  <Text style={s.total}>{formatarPreco(item.valor_total)}</Text>
-                </View>
-              </View>
-            );
-          }}
+          renderItem={({ item }) => <CartaoPedido pedido={item} onPress={() => navigation.navigate("Rastreamento", { pedidoId: item.id })} />}
         />
       )}
     </SafeAreaView>
   );
 }
 
+function CartaoPedido({ pedido, onPress }) {
+  const qtd = pedido.itens.reduce((s, i) => s + i.quantidade, 0);
+  const etapas = progresso(pedido.status);
+  const nomes = pedido.itens.map((i) => i.nome).join(", ");
+
+  return (
+    <TouchableOpacity style={s.card} onPress={onPress} activeOpacity={0.85}>
+      <View style={s.cardTopo}>
+        <Text style={s.codigo}>{pedido.codigo}</Text>
+        <SeloSituacao status={pedido.status} />
+      </View>
+      <Text style={s.data}>Feito em {formatarData(pedido.data_pedido)}, {qtd} {qtd === 1 ? "item" : "itens"}</Text>
+      <Text style={s.itens} numberOfLines={1}>{nomes}</Text>
+
+      {pedido.status !== "cancelado" && pedido.status !== "aguardando_pagamento" && (
+        <View style={s.progresso}>
+          {ETAPAS_PEDIDO.map((e, i) => (
+            <View key={e.status} style={[s.segmento, i < etapas && s.segmentoFeito]} />
+          ))}
+        </View>
+      )}
+
+      <View style={s.rodape}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.entrega} numberOfLines={1}>{textoEntrega(pedido)}</Text>
+          <Text style={s.total}>{formatarPreco(pedido.valor_total)}</Text>
+        </View>
+        <View style={s.acompanhar}>
+          <Text style={s.acompanharTexto}>{emAndamento(pedido.status) ? "Acompanhar" : "Detalhes"}</Text>
+          <Icone nome="chevron-forward" tamanho={16} cor={cores.primaria} />
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: cores.fundo },
-  lista: { paddingHorizontal: 16, paddingBottom: 32, flexGrow: 1 },
-  erro: {
-    backgroundColor: cores.destaque, color: "#6B5418", borderRadius: 12, padding: 12,
-    marginBottom: 12, fontSize: 13,
+  filtros: { flexDirection: "row", gap: 8, paddingHorizontal: 16, marginBottom: 12 },
+  chip: {
+    height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: cores.superficie,
+    borderWidth: 1, borderColor: cores.borda, justifyContent: "center",
   },
-  card: { backgroundColor: cores.superficie, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: cores.borda },
+  chipAtivo: { backgroundColor: cores.primariaEscura, borderColor: cores.primariaEscura },
+  chipTexto: { fontSize: 13, fontWeight: "700", color: cores.texto },
+  lista: { paddingHorizontal: 16, flexGrow: 1 },
+  erro: { backgroundColor: cores.destaque, color: "#6B5418", borderRadius: 12, padding: 12, marginBottom: 12, fontSize: 13 },
+  semFiltro: { textAlign: "center", color: cores.textoClaro, marginTop: 30 },
+  card: { backgroundColor: cores.superficie, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: cores.borda },
   cardTopo: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  numero: { fontSize: 16, fontWeight: "800", color: cores.texto },
-  situacao: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  situacaoTexto: { fontSize: 11, fontWeight: "800" },
-  data: { fontSize: 12, color: cores.textoClaro, marginTop: 4 },
-  itens: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: cores.borda, gap: 6 },
-  itemLinha: { flexDirection: "row", justifyContent: "space-between" },
-  itemNome: { flex: 1, fontSize: 13, color: cores.texto, marginRight: 12 },
-  itemValor: { fontSize: 13, color: cores.textoClaro },
-  rodape: {
-    flexDirection: "row", alignItems: "flex-end", marginTop: 12, paddingTop: 12,
-    borderTopWidth: 1, borderTopColor: cores.borda,
-  },
-  entrega: { fontSize: 12, color: cores.texto, fontWeight: "600" },
-  pagamento: { fontSize: 12, color: cores.textoClaro, marginTop: 2 },
-  total: { fontSize: 17, fontWeight: "900", color: cores.primariaEscura },
-  vazioBox: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24, paddingTop: 60 },
-  vazioTitulo: { fontSize: 17, fontWeight: "800", color: cores.texto },
-  vazioTexto: { fontSize: 13, color: cores.textoClaro, textAlign: "center", marginTop: 6, lineHeight: 19 },
-  botao: { backgroundColor: cores.primaria, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 28, marginTop: 20 },
-  botaoTexto: { color: cores.branco, fontWeight: "800" },
+  codigo: { fontSize: 16, fontWeight: "900", color: cores.texto },
+  data: { fontSize: 13, color: cores.textoClaro, marginTop: 6 },
+  itens: { fontSize: 13, color: cores.texto, marginTop: 2 },
+  progresso: { flexDirection: "row", gap: 4, marginTop: 12 },
+  segmento: { flex: 1, height: 5, borderRadius: 3, backgroundColor: cores.borda },
+  segmentoFeito: { backgroundColor: cores.primaria },
+  rodape: { flexDirection: "row", alignItems: "flex-end", marginTop: 12 },
+  entrega: { fontSize: 12, color: cores.textoClaro },
+  total: { fontSize: 18, fontWeight: "900", color: cores.primariaEscura, marginTop: 2 },
+  acompanhar: { flexDirection: "row", alignItems: "center", gap: 2 },
+  acompanharTexto: { fontSize: 14, fontWeight: "800", color: cores.primaria },
 });

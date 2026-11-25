@@ -1,5 +1,7 @@
 // Regras de negócio puras (sem banco, sem HTTP) — testadas em tests/unit.
 const crypto = require("crypto");
+// Frete, cupons, etapas do pedido e CPF: as mesmas regras que o app usa para mostrar os valores.
+const regrasPedido = require("../../src/utils/regrasPedido");
 
 const CATEGORIAS = ["Frutas", "Verduras", "Legumes", "Temperos", "Sucos"];
 const FORMAS_PAGAMENTO = ["Mercado Pago", "Pix", "Cartão de crédito", "Cartão de débito"];
@@ -36,6 +38,19 @@ function validarProduto(dados, { parcial = false } = {}) {
   if (!parcial || dados.categoria !== undefined) {
     if (!CATEGORIAS.includes(dados.categoria)) erros.push(`Categoria inválida. Use: ${CATEGORIAS.join(", ")}.`);
     produto.categoria = dados.categoria;
+  }
+
+  if (dados.preco_antigo !== undefined) {
+    if (dados.preco_antigo === null || dados.preco_antigo === "") {
+      produto.preco_antigo = null;
+    } else {
+      const antigo = converterPreco(dados.preco_antigo);
+      if (Number.isNaN(antigo) || antigo <= 0) erros.push("O preço antigo (oferta) deve ser um valor maior que zero.");
+      else if (produto.preco !== undefined && !Number.isNaN(produto.preco) && antigo <= produto.preco) {
+        erros.push("Na oferta, o preço antigo precisa ser maior que o preço atual.");
+      }
+      produto.preco_antigo = Math.round(antigo * 100) / 100;
+    }
   }
 
   if (dados.estoque !== undefined) {
@@ -99,6 +114,39 @@ function calcularPedido(itens, produtosPorId) {
   return { valido: erros.length === 0, erros, itens: itensCalculados, total };
 }
 
+// Endereço de entrega separado em campos. Retorna { valido, erros, endereco }.
+function validarEndereco(dados = {}) {
+  const texto = (v) => (typeof v === "string" ? v.trim() : "");
+  const endereco = {
+    cep: regrasPedido.somenteDigitos(dados.cep),
+    rua: texto(dados.rua),
+    numero: texto(dados.numero),
+    complemento: texto(dados.complemento),
+    bairro: texto(dados.bairro),
+    cidade: texto(dados.cidade),
+    uf: texto(dados.uf).toUpperCase().slice(0, 2),
+    referencia: texto(dados.referencia),
+  };
+  const erros = [];
+  if (endereco.cep.length !== 8) erros.push("CEP inválido.");
+  if (!endereco.rua) erros.push("Informe a rua.");
+  if (!endereco.numero) erros.push("Informe o número.");
+  if (!endereco.bairro) erros.push("Informe o bairro.");
+  if (!endereco.cidade) erros.push("Informe a cidade.");
+  return { valido: erros.length === 0, erros, endereco };
+}
+
+// Endereço gravado como JSON no banco; textos antigos (antes dos campos separados) viram null.
+function lerEndereco(valor) {
+  if (!valor) return null;
+  try {
+    const obj = JSON.parse(valor);
+    return obj && typeof obj === "object" ? obj : null;
+  } catch {
+    return null;
+  }
+}
+
 function gerarHashSenha(senha) {
   const sal = crypto.randomBytes(16).toString("hex");
   const hash = crypto.scryptSync(senha, sal, 64).toString("hex");
@@ -114,6 +162,9 @@ function verificarSenha(senha, armazenada) {
 }
 
 module.exports = {
+  ...regrasPedido,
+  validarEndereco,
+  lerEndereco,
   CATEGORIAS,
   FORMAS_PAGAMENTO,
   validarEmail,
