@@ -6,116 +6,112 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
+  Alert,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import cores from "../tema/cores";
-import {
-  CATEGORIAS,
-  CATEGORIA_ICONE,
-} from "../dados/produtos";
+import { CATEGORIAS, CATEGORIA_ICONE } from "../dados/produtos";
 import { useProdutos } from "../contexto/ContextoProdutos";
 import { useCarrinho } from "../contexto/ContextoCarrinho";
 import { useUsuario } from "../contexto/ContextoUsuario";
+import ImagemProduto from "../componentes/ImagemProduto";
+import { formatarPreco } from "../utils/validacoes";
+
+const ESTOQUE_BAIXO = 5;
 
 export default function TelaPrincipal({ navigation }) {
   const { produtos, carregando, sincronizando, sincronizar, status } = useProdutos();
-  const { usuario } = useUsuario();
-  const primeiroNome = usuario?.nome?.split(" ")[0];
+  const { usuario, sair } = useUsuario();
+  const { itens, adicionarAoCarrinho, quantidadeTotal, total, limparCarrinho } = useCarrinho();
 
-  const {
-    adicionarAoCarrinho,
-    quantidadeTotal,
-  } = useCarrinho();
-
+  const insets = useSafeAreaInsets();
+  const baseInferior = Math.max(insets.bottom, 12);
   const [busca, setBusca] = useState("");
   const [categoria, setCategoria] = useState(null);
 
-  const filtrados = useMemo(
-    () =>
-      produtos.filter(
-        (p) =>
-          (!categoria || p.categoria === categoria) &&
-          (!busca ||
-            p.nome
-              .toLowerCase()
-              .includes(busca.toLowerCase()))
-      ),
-    [produtos, categoria, busca]
-  );
+  const ehAdmin = usuario?.perfil === "admin";
+  const primeiroNome = usuario?.nome?.split(" ")[0];
+
+  const filtrados = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    return produtos.filter(
+      (p) =>
+        (!categoria || p.categoria === categoria) &&
+        (!termo || p.nome.toLowerCase().includes(termo))
+    );
+  }, [produtos, categoria, busca]);
+
+  function quantidadeNoCarrinho(id) {
+    return itens.find((i) => i.produto.id === id)?.quantidade || 0;
+  }
+
+  function adicionar(produto) {
+    const noCarrinho = quantidadeNoCarrinho(produto.id);
+    if (produto.estoque !== undefined && noCarrinho >= produto.estoque) {
+      Alert.alert("Estoque esgotado", `Temos só ${produto.estoque} unidade(s) de ${produto.nome} no momento.`);
+      return;
+    }
+    adicionarAoCarrinho(produto);
+  }
+
+  function confirmarSaida() {
+    Alert.alert("Sair da conta", "Deseja sair? Os itens do carrinho serão descartados.", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Sair", style: "destructive", onPress: () => { limparCarrinho(); sair(); navigation.replace("Login"); } },
+    ]);
+  }
 
   const cabecalho = (
     <>
       <View style={s.topo}>
-        <View>
-          <Text style={s.saudacao}>
-            Olá{primeiroNome ? `, ${primeiroNome}` : ""}! 👋
-          </Text>
-
-          <Text style={s.titulo}>
-            O que vamos levar hoje?
-          </Text>
+        <View style={{ flex: 1 }}>
+          <Text style={s.saudacao}>Olá{primeiroNome ? `, ${primeiroNome}` : ""}!</Text>
+          <Text style={s.titulo}>O que vamos levar hoje?</Text>
         </View>
 
-        <TouchableOpacity
-          style={s.avatar}
-          onPress={() => navigation.navigate("Admin")}
-        >
-          <Text>⚙️</Text>
+        <TouchableOpacity style={s.avatar} onPress={confirmarSaida} accessibilityLabel="Minha conta">
+          <Text style={s.avatarTexto}>{(primeiroNome || "?").charAt(0).toUpperCase()}</Text>
         </TouchableOpacity>
       </View>
 
       {status.online === false && (
-        <TouchableOpacity style={s.offline} onPress={sincronizar}>
-          <Text style={s.offlineTexto}>
-            Sem conexão · mostrando produtos salvos no celular. Toque para tentar de novo.
+        <TouchableOpacity style={s.aviso} onPress={sincronizar}>
+          <Text style={s.avisoTexto}>
+            Sem conexão com a loja. Você está vendo o catálogo salvo no celular. Toque para tentar de novo.
           </Text>
         </TouchableOpacity>
       )}
       {status.pendentes > 0 && (
-        <Text style={s.pendentes}>
-          {status.pendentes} pedido(s) aguardando envio ao servidor
-        </Text>
+        <View style={s.aviso}>
+          <Text style={s.avisoTexto}>
+            {status.pendentes} pedido(s) salvos no celular serão enviados assim que a conexão voltar.
+          </Text>
+        </View>
       )}
 
       <View style={s.busca}>
         <Text style={s.lupa}>⌕</Text>
-
         <TextInput
           style={s.buscaInput}
-          placeholder="Buscar frutas, verduras e mais..."
+          placeholder="Buscar frutas, verduras e mais"
           placeholderTextColor={cores.placeholder}
           value={busca}
           onChangeText={setBusca}
+          returnKeyType="search"
         />
+        {busca ? (
+          <TouchableOpacity onPress={() => setBusca("")} accessibilityLabel="Limpar busca">
+            <Text style={s.limpar}>✕</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       <View style={s.banner}>
-        <View style={{ flex: 1 }}>
-          <Text style={s.bannerTag}>
-            FRESQUINHO TODO DIA
-          </Text>
-
-          <Text style={s.bannerTitulo}>
-            Mais cor e saúde{`\n`}na sua rotina.
-          </Text>
-
-          <Text style={s.bannerSub}>
-            Produtos selecionados com carinho.
-          </Text>
-        </View>
-
-        <Text style={s.bannerEmoji}>🥑</Text>
-      </View>
-
-      <View style={s.secaoLinha}>
-        <Text style={s.secaoTitulo}>
-          Categorias
-        </Text>
-
-        <Text style={s.verTodos}>
-          Ver todas
+        <Text style={s.bannerTitulo}>Colhido fresco, entregue no seu horário.</Text>
+        <Text style={s.bannerSub}>
+          Monte sua cesta e escolha a janela de entrega no pagamento.
         </Text>
       </View>
 
@@ -124,524 +120,240 @@ export default function TelaPrincipal({ navigation }) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={s.categorias}
       >
-        {CATEGORIAS.map((c) => {
-          const ativo = categoria === c;
-
-          return (
-            <TouchableOpacity
-              key={c}
-              style={s.categoriaItem}
-              onPress={() =>
-                setCategoria(ativo ? null : c)
-              }
-            >
-              <View
-                style={[
-                  s.categoriaBolha,
-                  ativo && s.categoriaBolhaAtiva,
-                ]}
-              >
-                <Text style={s.categoriaEmoji}>
-                  {CATEGORIA_ICONE[c]}
-                </Text>
-              </View>
-
-              <Text
-                style={[
-                  s.categoriaTexto,
-                  ativo && s.categoriaTextoAtivo,
-                ]}
-              >
-                {c}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+        <Chip rotulo="Todos" ativo={!categoria} onPress={() => setCategoria(null)} />
+        {CATEGORIAS.map((c) => (
+          <Chip
+            key={c}
+            rotulo={c}
+            icone={CATEGORIA_ICONE[c]}
+            ativo={categoria === c}
+            onPress={() => setCategoria(categoria === c ? null : c)}
+          />
+        ))}
       </ScrollView>
 
       <View style={s.secaoLinha}>
-        <View>
-          <Text style={s.secaoTitulo}>
-            {categoria || "Destaques da semana"}
-          </Text>
-
-          <Text style={s.secaoSub}>
-            Escolhidos para você
-          </Text>
-        </View>
+        <Text style={s.secaoTitulo}>{categoria || "Todos os produtos"}</Text>
+        <Text style={s.secaoContagem}>
+          {filtrados.length} {filtrados.length === 1 ? "item" : "itens"}
+        </Text>
       </View>
     </>
   );
 
   return (
-    <SafeAreaView style={s.container}>
+    <SafeAreaView style={s.container} edges={["top"]}>
       <FlatList
         data={filtrados}
-        keyExtractor={(i) => i.id}
+        keyExtractor={(i) => String(i.id)}
         numColumns={2}
         ListHeaderComponent={cabecalho}
         contentContainerStyle={s.conteudo}
         columnWrapperStyle={s.colunas}
         refreshing={sincronizando}
         onRefresh={sincronizar}
-        renderItem={({ item }) => (
-          <View style={s.card}>
-            <View style={s.cardImagem}>
-              <View style={s.selo}>
-                <Text style={s.seloTexto}>
-                  FRESCO
-                </Text>
+        keyboardShouldPersistTaps="handled"
+        renderItem={({ item }) => {
+          const esgotado = item.estoque !== undefined && item.estoque <= 0;
+          const ultimas = !esgotado && item.estoque !== undefined && item.estoque <= ESTOQUE_BAIXO;
+          const qtd = quantidadeNoCarrinho(item.id);
+          return (
+            <View style={[s.card, esgotado && { opacity: 0.55 }]}>
+              <ImagemProduto produto={item} estilo={s.cardImagem} tamanhoEmoji={56} />
+              {(esgotado || ultimas) && (
+                <View style={[s.selo, esgotado && s.seloEsgotado]}>
+                  <Text style={[s.seloTexto, esgotado && { color: cores.branco }]}>
+                    {esgotado ? "Esgotado" : "Últimas unidades"}
+                  </Text>
+                </View>
+              )}
+
+              <Text style={s.cardNome} numberOfLines={1}>{item.nome}</Text>
+              <Text style={s.unidade}>{item.unidade || item.categoria}</Text>
+
+              <View style={s.cardRodape}>
+                <Text style={s.preco}>{formatarPreco(item.preco)}</Text>
+                <TouchableOpacity
+                  testID={`adicionar-${item.id}`}
+                  style={[s.mais, qtd > 0 && s.maisAtivo, esgotado && { backgroundColor: cores.borda }]}
+                  onPress={() => adicionar(item)}
+                  disabled={esgotado}
+                  accessibilityLabel={`Adicionar ${item.nome} ao carrinho`}
+                >
+                  <Text style={s.maisTexto}>{qtd > 0 ? qtd : "+"}</Text>
+                </TouchableOpacity>
               </View>
-
-              <Text style={s.produtoEmoji}>
-                {item.emoji ||
-                  CATEGORIA_ICONE[item.categoria] ||
-                  "🌱"}
-              </Text>
-
-              <TouchableOpacity style={s.favorito}>
-                <Text>♡</Text>
-              </TouchableOpacity>
             </View>
-
-            <Text
-              style={s.cardNome}
-              numberOfLines={1}
-            >
-              {item.nome}
-            </Text>
-
-            <Text style={s.unidade}>
-              {item.unidade || item.categoria}
-            </Text>
-
-            <View style={s.cardRodape}>
-              <View>
-                <Text style={s.preco}>
-                  R${" "}
-                  {item.preco
-                    .toFixed(2)
-                    .replace(".", ",")}
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                testID={`adicionar-${item.id}`}
-                style={s.mais}
-                onPress={() =>
-                  adicionarAoCarrinho(item)
-                }
-              >
-                <Text style={s.maisTexto}>
-                  ＋
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
+          );
+        }}
         ListEmptyComponent={
-          <Text style={s.vazio}>
-            {carregando
-              ? "Carregando produtos..."
-              : "Nenhum produto encontrado."}
-          </Text>
+          <View style={s.vazioBox}>
+            <Text style={s.vazioTitulo}>
+              {carregando ? "Carregando produtos..." : "Nenhum produto encontrado"}
+            </Text>
+            {!carregando && (busca || categoria) ? (
+              <TouchableOpacity onPress={() => { setBusca(""); setCategoria(null); }}>
+                <Text style={s.vazioLink}>Limpar filtros</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
         }
-        ListFooterComponent={
-          <View style={{ height: 100 }} />
-        }
+        ListFooterComponent={<View style={{ height: (quantidadeTotal > 0 ? 160 : 90) + baseInferior }} />}
       />
 
-      <View style={s.nav}>
-        <TouchableOpacity style={s.navItem}>
-          <Text style={s.navIcone}>⌂</Text>
-          <Text style={s.navAtivo}>Início</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={s.navItem}
-          onPress={() => setCategoria(null)}
-        >
-          <Text style={s.navIcone}>▦</Text>
-          <Text style={s.navTexto}>Produtos</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={s.navItem}
-          onPress={() =>
-            navigation.navigate("Carrinho")
-          }
-        >
-          <View>
-            <Text style={s.navIcone}>🛒</Text>
-
-            {quantidadeTotal > 0 && (
-              <View style={s.badge}>
-                <Text style={s.badgeTexto}>
-                  {quantidadeTotal}
-                </Text>
-              </View>
-            )}
+      {quantidadeTotal > 0 && (
+        <TouchableOpacity style={[s.barraCarrinho, { bottom: baseInferior + 80 }]} onPress={() => navigation.navigate("Carrinho")}>
+          <View style={s.barraQtd}>
+            <Text style={s.barraQtdTexto}>{quantidadeTotal}</Text>
           </View>
-
-          <Text style={s.navTexto}>Carrinho</Text>
+          <Text style={s.barraTexto}>Ver carrinho</Text>
+          <Text style={s.barraTotal}>{formatarPreco(total)}</Text>
         </TouchableOpacity>
+      )}
 
-        <TouchableOpacity
-          style={s.navItem}
-          onPress={() =>
-            navigation.navigate("Admin")
-          }
-        >
-          <Text style={s.navIcone}>♙</Text>
-          <Text style={s.navTexto}>Admin</Text>
-        </TouchableOpacity>
+      <View style={[s.nav, { bottom: baseInferior }]}>
+        <ItemNav icone="⌂" rotulo="Início" ativo />
+        <ItemNav icone="☰" rotulo="Pedidos" onPress={() => navigation.navigate("Pedidos")} />
+        <ItemNav
+          icone="🛒"
+          rotulo="Carrinho"
+          contador={quantidadeTotal}
+          onPress={() => navigation.navigate("Carrinho")}
+        />
+        {ehAdmin && (
+          <ItemNav icone="⚙" rotulo="Admin" onPress={() => navigation.navigate("Admin")} />
+        )}
       </View>
     </SafeAreaView>
   );
 }
 
+function Chip({ rotulo, icone, ativo, onPress }) {
+  return (
+    <TouchableOpacity style={[s.chip, ativo && s.chipAtivo]} onPress={onPress}>
+      {icone ? <Text style={s.chipIcone}>{icone}</Text> : null}
+      <Text style={[s.chipTexto, ativo && s.chipTextoAtivo]}>{rotulo}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function ItemNav({ icone, rotulo, ativo, contador, onPress }) {
+  return (
+    <TouchableOpacity style={s.navItem} onPress={onPress} disabled={!onPress}>
+      <View>
+        <Text style={[s.navIcone, ativo && { color: cores.primaria }]}>{icone}</Text>
+        {contador > 0 && (
+          <View style={s.badge}>
+            <Text style={s.badgeTexto}>{contador}</Text>
+          </View>
+        )}
+      </View>
+      <Text style={[s.navTexto, ativo && s.navAtivo]}>{rotulo}</Text>
+    </TouchableOpacity>
+  );
+}
+
 const s = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: cores.fundo,
-  },
+  container: { flex: 1, backgroundColor: cores.fundo },
+  conteudo: { paddingHorizontal: 16 },
+  colunas: { gap: 12 },
 
-  conteudo: {
-    paddingHorizontal: 18,
-  },
-
-  topo: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 14,
-    paddingBottom: 18,
-  },
-
-  saudacao: {
-    fontSize: 13,
-    color: cores.textoClaro,
-    fontWeight: "600",
-  },
-
-  titulo: {
-    fontSize: 23,
-    fontWeight: "800",
-    color: cores.texto,
-    marginTop: 3,
-  },
-
+  topo: { flexDirection: "row", alignItems: "center", paddingTop: 12, paddingBottom: 16 },
+  saudacao: { fontSize: 14, color: cores.textoClaro, fontWeight: "600" },
+  titulo: { fontSize: 24, fontWeight: "800", color: cores.texto, marginTop: 2, letterSpacing: -0.3 },
   avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: cores.primariaClara,
-    alignItems: "center",
-    justifyContent: "center",
+    width: 44, height: 44, borderRadius: 22, backgroundColor: cores.primaria,
+    alignItems: "center", justifyContent: "center",
   },
+  avatarTexto: { color: cores.branco, fontSize: 18, fontWeight: "800" },
 
-  offline: {
-    backgroundColor: cores.destaque,
-    borderRadius: 12,
-    padding: 10,
-    marginBottom: 12,
+  aviso: {
+    backgroundColor: cores.destaque, borderRadius: 12, padding: 12, marginBottom: 12,
+    borderWidth: 1, borderColor: "#F1DFAE",
   },
-
-  offlineTexto: {
-    fontSize: 11,
-    color: cores.texto,
-  },
-
-  pendentes: {
-    fontSize: 11,
-    color: cores.secundaria,
-    fontWeight: "700",
-    marginBottom: 10,
-  },
+  avisoTexto: { fontSize: 12, color: "#6B5418", lineHeight: 17 },
 
   busca: {
-    height: 50,
-    borderRadius: 16,
-    backgroundColor: cores.superficie,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 15,
-    borderWidth: 1,
-    borderColor: cores.borda,
-    marginBottom: 18,
+    height: 48, borderRadius: 14, backgroundColor: cores.superficie, flexDirection: "row",
+    alignItems: "center", paddingHorizontal: 14, borderWidth: 1, borderColor: cores.borda, marginBottom: 16,
   },
+  lupa: { fontSize: 22, color: cores.primaria, marginRight: 8 },
+  buscaInput: { flex: 1, fontSize: 15, color: cores.texto },
+  limpar: { fontSize: 14, color: cores.textoClaro, paddingHorizontal: 4 },
 
-  lupa: {
-    fontSize: 22,
-    color: cores.primaria,
-    marginRight: 8,
-  },
+  banner: { backgroundColor: cores.primaria, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 18 },
+  bannerTitulo: { fontSize: 20, lineHeight: 25, fontWeight: "800", color: cores.branco, maxWidth: 260 },
+  bannerSub: { fontSize: 13, lineHeight: 18, color: "#D5E6D6", marginTop: 6, maxWidth: 280 },
 
-  buscaInput: {
-    flex: 1,
-    fontSize: 14,
-    color: cores.texto,
+  categorias: { gap: 8, paddingVertical: 16, paddingRight: 8 },
+  chip: {
+    flexDirection: "row", alignItems: "center", height: 38, paddingHorizontal: 14, borderRadius: 19,
+    backgroundColor: cores.superficie, borderWidth: 1, borderColor: cores.borda,
   },
+  chipAtivo: { backgroundColor: cores.primariaEscura, borderColor: cores.primariaEscura },
+  chipIcone: { fontSize: 16, marginRight: 6 },
+  chipTexto: { fontSize: 13, color: cores.texto, fontWeight: "600" },
+  chipTextoAtivo: { color: cores.branco },
 
-  banner: {
-    backgroundColor: cores.primaria,
-    borderRadius: 24,
-    padding: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    overflow: "hidden",
-  },
-
-  bannerTag: {
-    fontSize: 9,
-    fontWeight: "900",
-    letterSpacing: 1,
-    color: "#CFE7C8",
-  },
-
-  bannerTitulo: {
-    fontSize: 22,
-    lineHeight: 27,
-    fontWeight: "900",
-    color: cores.branco,
-    marginTop: 7,
-  },
-
-  bannerSub: {
-    fontSize: 11,
-    color: "#DDECDD",
-    marginTop: 7,
-  },
-
-  bannerEmoji: {
-    fontSize: 72,
-    transform: [{ rotate: "-12deg" }],
-  },
-
-  secaoLinha: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    marginTop: 24,
-    marginBottom: 13,
-  },
-
-  secaoTitulo: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: cores.texto,
-  },
-
-  secaoSub: {
-    fontSize: 11,
-    color: cores.textoClaro,
-    marginTop: 2,
-  },
-
-  verTodos: {
-    fontSize: 12,
-    color: cores.primaria,
-    fontWeight: "700",
-  },
-
-  categorias: {
-    gap: 16,
-    paddingRight: 10,
-  },
-
-  categoriaItem: {
-    alignItems: "center",
-    width: 58,
-  },
-
-  categoriaBolha: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
-    backgroundColor: cores.superficie,
-    borderWidth: 1,
-    borderColor: cores.borda,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  categoriaBolhaAtiva: {
-    backgroundColor: cores.primariaClara,
-    borderColor: cores.primaria,
-  },
-
-  categoriaEmoji: {
-    fontSize: 26,
-  },
-
-  categoriaTexto: {
-    fontSize: 10,
-    color: cores.textoClaro,
-    marginTop: 6,
-    fontWeight: "600",
-  },
-
-  categoriaTextoAtivo: {
-    color: cores.primaria,
-    fontWeight: "800",
-  },
-
-  colunas: {
-    gap: 12,
-  },
+  secaoLinha: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 },
+  secaoTitulo: { fontSize: 18, fontWeight: "800", color: cores.texto },
+  secaoContagem: { fontSize: 12, color: cores.textoClaro },
 
   card: {
-    flex: 1,
-    backgroundColor: cores.superficie,
-    borderRadius: 18,
-    padding: 10,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: cores.borda,
+    flex: 1, maxWidth: "48.5%", backgroundColor: cores.superficie, borderRadius: 18, padding: 8,
+    marginBottom: 12, borderWidth: 1, borderColor: cores.borda,
   },
-
-  cardImagem: {
-    height: 118,
-    borderRadius: 14,
-    backgroundColor: "#F0F4EA",
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-  },
-
-  produtoEmoji: {
-    fontSize: 61,
-  },
-
+  cardImagem: { height: 128, borderRadius: 13 },
   selo: {
-    position: "absolute",
-    left: 7,
-    top: 7,
-    backgroundColor: cores.primariaClara,
-    borderRadius: 7,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
+    position: "absolute", left: 14, top: 14, backgroundColor: cores.destaque,
+    borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
   },
-
-  seloTexto: {
-    fontSize: 7,
-    color: cores.primaria,
-    fontWeight: "900",
-  },
-
-  favorito: {
-    position: "absolute",
-    right: 8,
-    top: 5,
-    width: 25,
-    height: 25,
-    borderRadius: 13,
-    backgroundColor: cores.branco,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  cardNome: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: cores.texto,
-    marginTop: 10,
-  },
-
-  unidade: {
-    fontSize: 10,
-    color: cores.textoClaro,
-    marginTop: 2,
-  },
-
+  seloEsgotado: { backgroundColor: cores.perigo },
+  seloTexto: { fontSize: 10, color: "#6B5418", fontWeight: "800" },
+  cardNome: { fontSize: 14, fontWeight: "800", color: cores.texto, marginTop: 10, paddingHorizontal: 4 },
+  unidade: { fontSize: 12, color: cores.textoClaro, marginTop: 2, paddingHorizontal: 4 },
   cardRodape: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 9,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    marginTop: 10, paddingLeft: 4,
   },
-
-  preco: {
-    fontSize: 14,
-    fontWeight: "900",
-    color: cores.primariaEscura,
-  },
-
+  preco: { fontSize: 15, fontWeight: "900", color: cores.primariaEscura },
   mais: {
-    width: 31,
-    height: 31,
-    borderRadius: 10,
-    backgroundColor: cores.primaria,
-    alignItems: "center",
-    justifyContent: "center",
+    minWidth: 34, height: 34, borderRadius: 11, backgroundColor: cores.primaria,
+    alignItems: "center", justifyContent: "center", paddingHorizontal: 8,
   },
+  maisAtivo: { backgroundColor: cores.secundaria },
+  maisTexto: { fontSize: 17, color: cores.branco, fontWeight: "800" },
 
-  maisTexto: {
-    fontSize: 18,
-    color: cores.branco,
-    fontWeight: "700",
-  },
+  vazioBox: { alignItems: "center", marginVertical: 40 },
+  vazioTitulo: { color: cores.textoClaro, fontSize: 14 },
+  vazioLink: { color: cores.primaria, fontWeight: "800", marginTop: 10 },
 
-  vazio: {
-    textAlign: "center",
-    color: cores.textoClaro,
-    marginVertical: 30,
+  barraCarrinho: {
+    position: "absolute", left: 16, right: 16, bottom: 92, height: 56, borderRadius: 16,
+    backgroundColor: cores.primariaEscura, flexDirection: "row", alignItems: "center", paddingHorizontal: 12,
+    shadowColor: cores.sombra, shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
+  barraQtd: {
+    minWidth: 30, height: 30, borderRadius: 9, backgroundColor: cores.secundaria,
+    alignItems: "center", justifyContent: "center", paddingHorizontal: 6,
+  },
+  barraQtdTexto: { color: cores.branco, fontWeight: "900" },
+  barraTexto: { flex: 1, color: cores.branco, fontWeight: "800", fontSize: 15, marginLeft: 12 },
+  barraTotal: { color: cores.branco, fontWeight: "900", fontSize: 15 },
 
   nav: {
-    position: "absolute",
-    left: 12,
-    right: 12,
-    bottom: 8,
-    height: 68,
-    borderRadius: 22,
-    backgroundColor: cores.superficie,
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: cores.borda,
+    position: "absolute", left: 12, right: 12, bottom: 12, height: 68, borderRadius: 22,
+    backgroundColor: cores.superficie, flexDirection: "row", justifyContent: "space-around",
+    alignItems: "center", borderWidth: 1, borderColor: cores.borda,
   },
-
-  navItem: {
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: 58,
-  },
-
-  navIcone: {
-    fontSize: 19,
-    color: cores.texto,
-  },
-
-  navTexto: {
-    fontSize: 9,
-    color: cores.textoClaro,
-    marginTop: 3,
-  },
-
-  navAtivo: {
-    fontSize: 9,
-    color: cores.primaria,
-    fontWeight: "800",
-    marginTop: 3,
-  },
-
+  navItem: { alignItems: "center", justifyContent: "center", minWidth: 64 },
+  navIcone: { fontSize: 20, color: cores.textoClaro },
+  navTexto: { fontSize: 11, color: cores.textoClaro, marginTop: 3 },
+  navAtivo: { color: cores.primaria, fontWeight: "800" },
   badge: {
-    position: "absolute",
-    right: -9,
-    top: -6,
-    backgroundColor: cores.secundaria,
-    minWidth: 17,
-    height: 17,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
+    position: "absolute", right: -10, top: -6, backgroundColor: cores.secundaria, minWidth: 18,
+    height: 18, borderRadius: 9, alignItems: "center", justifyContent: "center", paddingHorizontal: 4,
   },
-
-  badgeTexto: {
-    fontSize: 9,
-    color: cores.branco,
-    fontWeight: "900",
-  },
+  badgeTexto: { fontSize: 10, color: cores.branco, fontWeight: "900" },
 });

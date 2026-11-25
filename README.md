@@ -1,44 +1,67 @@
-# Frut & Vida — Item 1.4 (Configuração do Ambiente e Interface Inicial)
+# Frut & Vida
 
-App de e-commerce de hortifruti e sucos naturais, desenvolvido em React Native com Expo,
-como parte do Projeto Integrador IV (PI IV – Desenvolvimento para Dispositivos Móveis).
+Aplicativo de e-commerce de hortifruti e sucos naturais, desenvolvido em React Native (Expo)
+para o Projeto Integrador IV – Desenvolvimento para Dispositivos Móveis (Senac).
 
-## Telas implementadas
+## Estrutura
 
-| Tela | Arquivo | Descrição |
-|---|---|---|
-| Login | `src/telas/TelaLogin.js` | Autenticação do usuário |
-| Cadastro | `src/telas/TelaCadastro.js` | Criação de conta do cliente |
-| Principal (Catálogo) | `src/telas/TelaPrincipal.js` | Listagem, busca e filtro de produtos por categoria |
-| Carrinho | `src/telas/TelaCarrinho.js` | Itens adicionados, quantidades e total |
-| Pagamento | `src/telas/TelaPagamento.js` | Horário de entrega e formas de pagamento (Mercado Pago) |
-| Administração | `src/telas/TelaAdmin.js` | CRUD de produtos (adicionar, editar valor, excluir) |
+| Pasta | Conteúdo |
+|---|---|
+| `src/telas` | 7 telas: Login, Cadastro, Principal (catálogo), Carrinho, Pagamento, Meus pedidos e Administração |
+| `src/componentes` | Componentes reutilizáveis (cabeçalho e imagem do produto) |
+| `src/contexto` | Estado global com Context API (usuário, produtos, carrinho) |
+| `src/servicos` | Consumo da API REST, ViaCEP (Correios) e sincronização offline |
+| `src/dados` | Banco local SQLite do celular (cache de produtos e fila de pedidos offline) |
+| `backend` | API REST em Node.js/Express + SQLite, integração com Mercado Pago e testes |
+| `backend/public/imagens` | Fotos dos produtos (veja o `LEIA-ME.md` da pasta) |
+| `dashboard` | Dashboard em Python (Streamlit) que lê o JSON exportado pelo app |
+| `database` | Script SQL do banco de dados |
 
-Os dados de produtos estão mockados em `src/dados/produtos.js` e o estado é gerenciado
-por Context API (`src/contexto/ContextoProdutos.js` e `src/contexto/ContextoCarrinho.js`).
-Na Sprint 2 (item 1.5), esses dados passarão a vir da API Node + banco de dados.
+## Como rodar
 
-## Como rodar o projeto
-
-### 1. Pré-requisitos
-- Node.js instalado (versão LTS): https://nodejs.org
-- Editor: Visual Studio Code
-- App **Expo Go** instalado no celular (Android ou iOS), disponível na loja de apps
-
-### 2. Instalar as dependências
-Abra a pasta do projeto no VS Code, abra o terminal integrado e rode:
+Pré-requisitos: Node.js (LTS), app Expo Go no celular, e celular e computador na mesma rede Wi-Fi.
 
 ```bash
+# 1. Dependências (na raiz e no backend)
 npm install
-```
+cd backend && npm install
 
-### 3. Iniciar o projeto
+# 2. Token do Mercado Pago: copie backend/.env.example para backend/.env e cole o Access Token de teste
 
-```bash
+# 3. Backend (terminal 1, dentro de backend/)
+npm start
+
+# 4. App (terminal 2, na raiz do projeto)
 npx expo start
 ```
 
-Isso abre um QR Code no terminal/navegador. Basta escanear o QR Code com o app **Expo Go**
-(Android: usando o próprio app; iOS: usando a câmera do celular) para abrir o app no seu
-celular, sem precisar instalar Android Studio ou Xcode.
+Escaneie o QR Code com o Expo Go.
 
+### Contas
+
+- **Administrador:** `admin@frutevida.com` / `admin123` (criada automaticamente pelo backend). Só essa conta vê a área de administração.
+- **Cliente:** crie pela tela de cadastro.
+
+### Dados de exemplo para o dashboard
+
+```bash
+cd backend
+npm run seed      # gera clientes e pedidos de exemplo dos últimos 60 dias
+```
+
+Depois, no app, entre como administrador e toque em **Gerar JSON**.
+
+### Testes (unitários, integração e E2E)
+
+```bash
+cd backend
+npm test
+```
+
+### Dashboard
+
+```bash
+cd dashboard
+py -m pip install -r requirements.txt
+py -m streamlit run dashboard.py
+```

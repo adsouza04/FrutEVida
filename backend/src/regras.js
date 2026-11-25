@@ -44,9 +44,14 @@ function validarProduto(dados, { parcial = false } = {}) {
     produto.estoque = estoque;
   }
 
-  for (const campo of ["unidade", "emoji", "descricao"]) {
-    if (dados[campo] !== undefined) produto[campo] = String(dados[campo]);
+  for (const campo of ["unidade", "emoji", "descricao", "imagem"]) {
+    if (dados[campo] !== undefined) produto[campo] = dados[campo] === null ? null : String(dados[campo]).trim();
   }
+  if (produto.imagem !== undefined && produto.imagem !== null && produto.imagem !== "" &&
+      !/^(https?:\/\/|\/imagens\/)/.test(produto.imagem)) {
+    erros.push("A imagem deve ser um link (http/https) ou um caminho /imagens/...");
+  }
+  if (produto.imagem === "") produto.imagem = null;
   if (dados.destaque !== undefined) produto.destaque = dados.destaque ? 1 : 0;
 
   return { valido: erros.length === 0, erros, produto };

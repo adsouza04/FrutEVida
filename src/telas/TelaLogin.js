@@ -5,12 +5,12 @@ import {
     TextInput,
     TouchableOpacity,
     StyleSheet,
-    SafeAreaView,
     KeyboardAvoidingView,
     Platform,
     ActivityIndicator,
 } from "react-native";
 
+import { SafeAreaView } from "react-native-safe-area-context";
 import cores from "../tema/cores";
 import { useUsuario } from "../contexto/ContextoUsuario";
 
@@ -112,7 +112,11 @@ export default function TelaLogin({ navigation }) {
                         </TouchableOpacity>
                     </View>
 
-                    <TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() =>
+                            alert("Para redefinir sua senha, fale com a loja pelo e-mail contato@frutevida.com.")
+                        }
+                    >
                         <Text style={s.esqueci}>
                             Esqueci minha senha
                         </Text>
@@ -128,7 +132,6 @@ export default function TelaLogin({ navigation }) {
                         ) : (
                             <>
                                 <Text style={s.botaoTexto}>Entrar</Text>
-                                <Text style={s.seta}>→</Text>
                             </>
                         )}
                     </TouchableOpacity>

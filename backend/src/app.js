@@ -12,6 +12,9 @@ function criarApp(db, { pastaExportacao = path.join(__dirname, "..", "exportacoe
   app.use(cors());
   app.use(express.json());
 
+  // Fotos dos produtos (backend/public/imagens). O app monta a URL completa a partir do endereço da API.
+  app.use("/imagens", express.static(path.join(__dirname, "..", "public", "imagens"), { maxAge: "1d" }));
+
   app.get("/", (req, res) => res.json({ mensagem: "API Frut & Vida funcionando!", horario: new Date().toISOString() }));
 
   app.use("/produtos", rotasProdutos(db));

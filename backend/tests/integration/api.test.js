@@ -60,6 +60,25 @@ describe("usuários", () => {
   });
 });
 
+describe("perfis e imagens", () => {
+  test("administrador padrão faz login com perfil admin; cliente novo é perfil cliente", async () => {
+    const admin = await request(app).post("/login").send({ email: "admin@frutevida.com", senha: "admin123" }).expect(200);
+    expect(admin.body.perfil).toBe("admin");
+    const cliente = await request(app).post("/usuarios").send({ nome: "Caio", email: "caio@t.com", senha: "123456", perfil: "admin" }).expect(201);
+    expect(cliente.body.perfil).toBe("cliente"); // o cadastro público não consegue virar admin
+  });
+
+  test("catálogo inicial já vem com o caminho da foto", async () => {
+    const res = await request(app).get("/produtos/1").expect(200);
+    expect(res.body.imagem).toBe("/imagens/maca.jpg");
+  });
+
+  test("aceita link de imagem válido e recusa texto qualquer", async () => {
+    await request(app).put("/produtos/1").send({ imagem: "https://exemplo.com/maca.jpg" }).expect(200);
+    await request(app).put("/produtos/1").send({ imagem: "maca" }).expect(400);
+  });
+});
+
 describe("pedidos", () => {
   async function criarUsuario() {
     return (await request(app).post("/usuarios").send({ nome: "Bia", email: "bia@t.com", senha: "123456" })).body;
@@ -98,7 +117,8 @@ describe("exportação JSON", () => {
     await request(app).post("/usuarios").send({ nome: "Ana", email: "ana@t.com", senha: "123456" });
     const res = await request(app).post("/exportar").expect(201);
     expect(res.body.resumo.total_produtos).toBe(10);
-    expect(res.body.clientes[0]).toEqual({ id: 1, criado_em: expect.any(String) });
+    expect(res.body.resumo.total_clientes).toBe(1); // o administrador não conta como cliente
+    expect(res.body.clientes[0]).toEqual({ id: expect.any(Number), criado_em: expect.any(String) });
     const arquivo = JSON.parse(fs.readFileSync(path.join(pasta, "dados_frut_e_vida.json"), "utf8"));
     expect(arquivo.app).toBe("Frut & Vida");
   });

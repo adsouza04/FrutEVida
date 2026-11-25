@@ -4,12 +4,13 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   ActivityIndicator,
   Alert,
 } from "react-native";
 import * as WebBrowser from "expo-web-browser";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Cabecalho from "../componentes/Cabecalho";
 import cores from "../tema/cores";
 import { useCarrinho } from "../contexto/ContextoCarrinho";
 import { useUsuario } from "../contexto/ContextoUsuario";
@@ -142,13 +143,7 @@ export default function TelaPagamento({ navigation }) {
 
   return (
     <SafeAreaView style={estilos.container}>
-      <View style={estilos.cabecalho}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={estilos.voltar}>←</Text>
-        </TouchableOpacity>
-        <Text style={estilos.titulo}>Entrega e Pagamento</Text>
-        <View style={{ width: 24 }} />
-      </View>
+      <Cabecalho titulo="Entrega e pagamento" onVoltar={() => navigation.goBack()} />
 
       <ScrollView contentContainerStyle={estilos.conteudo}>
         {pedidoAguardando && (

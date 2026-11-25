@@ -51,7 +51,6 @@ export const api = {
   listarPedidos: (usuarioId) => requisicao("GET", `/pedidos?usuario_id=${usuarioId}`),
 
   // Verifica o pagamento de um pedido no Mercado Pago e atualiza o status do pedido.
-    criarPedido: (dados) => requisicao("POST", "/pedidos", dados),
   verificarPagamento: (pedidoId) => requisicao("POST", `/pedidos/${pedidoId}/verificar-pagamento`, null, { tempoLimite: 15000 }),
 
   // Item 2.2: gera o JSON para o dashboard

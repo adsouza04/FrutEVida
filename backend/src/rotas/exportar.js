@@ -8,7 +8,8 @@ function montarExportacao(db) {
   const produtos = db.prepare("SELECT id, nome, categoria, unidade, preco, estoque, ativo FROM produtos ORDER BY id").all()
     .map((p) => ({ ...p, ativo: Boolean(p.ativo) }));
   // Dados pessoais ficam de fora: o dashboard só precisa de id e data de cadastro.
-  const clientes = db.prepare("SELECT id, criado_em FROM usuarios ORDER BY id").all();
+  // O administrador não é cliente, então fica fora da contagem.
+  const clientes = db.prepare("SELECT id, criado_em FROM usuarios WHERE perfil = 'cliente' ORDER BY id").all();
   const pedidos = db.prepare("SELECT id FROM pedidos ORDER BY id").all().map((l) => buscarPedidoCompleto(db, l.id));
   const faturamento = pedidos.reduce((s, p) => s + p.valor_total, 0);
 

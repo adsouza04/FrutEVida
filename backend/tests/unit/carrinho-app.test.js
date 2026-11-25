@@ -39,3 +39,14 @@ describe("validações do app", () => {
     expect(v.validarCadastro({ ...ok, email: "ana" })).toBe("Digite um e-mail válido.");
   });
 });
+describe("imagens dos produtos (src/utils/imagens.js)", () => {
+  const { resolverImagem } = require("../../../src/utils/imagens");
+  test("caminho do servidor recebe o endereço da API", () => {
+    expect(resolverImagem("/imagens/maca.jpg", "http://192.168.0.10:3000/")).toBe("http://192.168.0.10:3000/imagens/maca.jpg");
+  });
+  test("link completo é usado como está; vazio vira null", () => {
+    expect(resolverImagem("https://exemplo.com/a.jpg", "http://x")).toBe("https://exemplo.com/a.jpg");
+    expect(resolverImagem("", "http://x")).toBeNull();
+    expect(resolverImagem(null, "http://x")).toBeNull();
+  });
+});

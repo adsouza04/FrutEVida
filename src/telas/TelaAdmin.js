@@ -6,17 +6,20 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
-  SafeAreaView,
   Modal,
   Alert,
   Share,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import cores from "../tema/cores";
 import { CATEGORIAS } from "../dados/produtos";
 import { useProdutos } from "../contexto/ContextoProdutos";
 import { api } from "../servicos/api";
 import { formatarPreco } from "../utils/validacoes";
+import { useUsuario } from "../contexto/ContextoUsuario";
+import Cabecalho from "../componentes/Cabecalho";
+import ImagemProduto from "../componentes/ImagemProduto";
 
 function horaCurta(iso) {
   if (!iso) return "nunca";
@@ -25,6 +28,22 @@ function horaCurta(iso) {
 }
 
 export default function TelaAdmin({ navigation }) {
+  const { usuario } = useUsuario();
+  if (usuario?.perfil !== "admin") {
+    return (
+      <SafeAreaView style={estilos.container}>
+        <Cabecalho titulo="Administração" onVoltar={() => navigation.goBack()} />
+        <View style={estilos.bloqueio}>
+          <Text style={estilos.bloqueioTitulo}>Área restrita</Text>
+          <Text style={estilos.bloqueioTexto}>Entre com uma conta de administrador para gerenciar o catálogo.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+  return <PainelAdmin navigation={navigation} />;
+}
+
+function PainelAdmin({ navigation }) {
   const {
     produtos, status, sincronizando, sincronizar,
     adicionarProduto, editarProduto, excluirProduto,
@@ -34,6 +53,7 @@ export default function TelaAdmin({ navigation }) {
   const [nome, setNome] = useState("");
   const [preco, setPreco] = useState("");
   const [estoque, setEstoque] = useState("");
+  const [imagem, setImagem] = useState("");
   const [categoria, setCategoria] = useState(CATEGORIAS[0]);
   const [salvando, setSalvando] = useState(false);
   const [exportando, setExportando] = useState(false);
@@ -43,6 +63,7 @@ export default function TelaAdmin({ navigation }) {
     setNome("");
     setPreco("");
     setEstoque("");
+    setImagem("");
     setCategoria(CATEGORIAS[0]);
     setModalVisivel(true);
   }
@@ -52,6 +73,7 @@ export default function TelaAdmin({ navigation }) {
     setNome(produto.nome);
     setPreco(String(produto.preco).replace(".", ","));
     setEstoque(String(produto.estoque ?? 0));
+    setImagem(produto.imagem || "");
     setCategoria(produto.categoria);
     setModalVisivel(true);
   }
@@ -70,6 +92,7 @@ export default function TelaAdmin({ navigation }) {
     }
     const dados = { nome: nome.trim(), preco: precoNumerico, categoria };
     if (estoque !== "") dados.estoque = parseInt(estoque, 10) || 0;
+    dados.imagem = imagem.trim() || null;
 
     setSalvando(true);
     try {
@@ -151,15 +174,16 @@ export default function TelaAdmin({ navigation }) {
 
   return (
     <SafeAreaView style={estilos.container}>
-      <View style={estilos.cabecalho}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={estilos.voltar}>←</Text>
-        </TouchableOpacity>
-        <Text style={estilos.titulo}>Administrar Produtos</Text>
-        <TouchableOpacity onPress={abrirNovo}>
-          <Text style={estilos.adicionar}>＋</Text>
-        </TouchableOpacity>
-      </View>
+      <Cabecalho
+        titulo="Administrar produtos"
+        subtitulo={`${produtos.length} no catálogo`}
+        onVoltar={() => navigation.goBack()}
+        direita={
+          <TouchableOpacity style={estilos.adicionarBotao} onPress={abrirNovo} accessibilityLabel="Novo produto">
+            <Text style={estilos.adicionar}>+</Text>
+          </TouchableOpacity>
+        }
+      />
 
       <View style={estilos.statusBox}>
         <View style={[estilos.statusPonto, { backgroundColor: status.online === false ? cores.perigo : cores.primaria }]} />
@@ -197,10 +221,11 @@ export default function TelaAdmin({ navigation }) {
         }
         renderItem={({ item }) => (
           <View style={estilos.linha}>
-            <View style={{ flex: 1 }}>
+            <ImagemProduto produto={item} estilo={estilos.miniatura} tamanhoEmoji={22} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
               <Text style={estilos.linhaNome}>{item.nome}</Text>
               <Text style={estilos.linhaCategoria}>
-                {item.categoria} · estoque {item.estoque ?? 0}
+                {item.categoria}, estoque {item.estoque ?? 0}
               </Text>
             </View>
             <Text style={estilos.linhaPreco}>{formatarPreco(item.preco)}</Text>
@@ -247,6 +272,24 @@ export default function TelaAdmin({ navigation }) {
               </View>
             </View>
 
+            <Text style={estilos.rotulo}>Foto (link https://... ou /imagens/arquivo.jpg)</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <ImagemProduto
+                produto={{ imagem: imagem.trim(), categoria, nome }}
+                estilo={estilos.previa}
+                tamanhoEmoji={22}
+              />
+              <TextInput
+                style={[estilos.campo, { flex: 1 }]}
+                value={imagem}
+                onChangeText={setImagem}
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholder="Opcional"
+                placeholderTextColor={cores.placeholder}
+              />
+            </View>
+
             <Text style={estilos.rotulo}>Categoria</Text>
             <View style={estilos.categoriaLinha}>
               {CATEGORIAS.map((c) => {
@@ -289,6 +332,15 @@ export default function TelaAdmin({ navigation }) {
 
 const estilos = StyleSheet.create({
   container: { flex: 1, backgroundColor: cores.fundo },
+  bloqueio: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 },
+  bloqueioTitulo: { fontSize: 18, fontWeight: "800", color: cores.texto },
+  bloqueioTexto: { fontSize: 14, color: cores.textoClaro, textAlign: "center", marginTop: 6, lineHeight: 20 },
+  adicionarBotao: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: cores.primaria,
+    alignItems: "center", justifyContent: "center",
+  },
+  miniatura: { width: 48, height: 48, borderRadius: 10 },
+  previa: { width: 46, height: 46, borderRadius: 10 },
   cabecalho: {
     flexDirection: "row",
     alignItems: "center",
@@ -298,7 +350,7 @@ const estilos = StyleSheet.create({
   },
   voltar: { fontSize: 20, color: cores.texto },
   titulo: { fontSize: 16, fontWeight: "bold", color: cores.texto },
-  adicionar: { fontSize: 22, color: cores.primaria, fontWeight: "bold" },
+  adicionar: { fontSize: 24, lineHeight: 26, color: cores.branco, fontWeight: "700" },
   lista: { paddingHorizontal: 20, paddingBottom: 20 },
   statusBox: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, marginBottom: 10 },
   statusPonto: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },

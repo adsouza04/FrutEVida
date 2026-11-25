@@ -5,12 +5,13 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   ActivityIndicator,
 } from "react-native";
 
+import { SafeAreaView } from "react-native-safe-area-context";
 import cores from "../tema/cores";
+import Cabecalho from "../componentes/Cabecalho";
 import { useUsuario } from "../contexto/ContextoUsuario";
 import { buscarCep } from "../servicos/api";
 import { cepValido, validarCadastro } from "../utils/validacoes";
@@ -68,15 +69,11 @@ export default function TelaCadastro({ navigation }) {
 
   return (
     <SafeAreaView style={estilos.container}>
-      <View style={estilos.cabecalho}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={estilos.voltar}>←</Text>
-        </TouchableOpacity>
-
-        <Text style={estilos.titulo}>Criar Conta</Text>
-
-        <View style={{ width: 24 }} />
-      </View>
+      <Cabecalho
+        titulo="Criar conta"
+        subtitulo="Seus dados para entrega"
+        onVoltar={() => navigation.goBack()}
+      />
 
       <ScrollView contentContainerStyle={estilos.formulario}>
         <Campo
